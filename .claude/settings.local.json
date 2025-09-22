@@ -21,7 +21,8 @@
       "Bash(git push:*)",
       "Bash(ssh:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

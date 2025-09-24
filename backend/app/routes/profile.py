@@ -33,3 +33,21 @@ async def get_my_profile(
         )
 
     return profile
+
+
+@router.get("/toggle-admin")
+async def toggle_admin(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """Toggle current user's admin status"""
+
+    current_user.is_admin = not current_user.is_admin
+    session.add(current_user)
+    await session.commit()
+    await session.refresh(current_user)
+
+    return {
+        "message": f"Admin status {'enabled' if current_user.is_admin else 'disabled'}",
+        "is_admin": current_user.is_admin
+    }

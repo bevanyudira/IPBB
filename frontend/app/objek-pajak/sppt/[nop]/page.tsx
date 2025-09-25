@@ -160,7 +160,7 @@ export default function Page() {
   };
 
   // Calculate Denda (penalty) - 2% per month from due date, max 48%
-  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, isPaid: boolean | null) => {
+  const calculateDenda = (pbbAmount: number | null | undefined, dueDate: string | null | undefined, isPaid: boolean | null | undefined) => {
     if (!pbbAmount || !dueDate || isPaid) return 0;
 
     const due = new Date(dueDate);
@@ -179,7 +179,7 @@ export default function Page() {
   };
 
   // Calculate Tagihan (total bill) - PBB + Denda
-  const calculateTagihan = (pbbAmount: number | null, denda: number) => {
+  const calculateTagihan = (pbbAmount: number | null | undefined | undefined, denda: number) => {
     if (!pbbAmount) return denda;
     return pbbAmount + denda;
   };
@@ -344,7 +344,7 @@ export default function Page() {
       >
         <AppSidebar user={sidebarUser} variant="inset" />
         <SidebarInset>
-        <SiteHeader title="SPPT - Pilih Tahun Pajak" className="print:hidden" />
+        <SiteHeader title="SPPT - Pilih Tahun Pajak" />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-4 p-4 print-container">
             {/* Print Title - Only visible when printing */}

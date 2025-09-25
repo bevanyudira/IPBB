@@ -38,7 +38,7 @@ async def handle_google_callback(request: Request, session: AsyncSession) -> Use
     if not code:
         raise HTTPException(status_code=400, detail="Missing code from Google")
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         token_resp = await client.post(
             GOOGLE_TOKEN_URL,
             data={

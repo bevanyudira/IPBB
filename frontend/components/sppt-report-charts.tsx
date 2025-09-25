@@ -202,7 +202,7 @@ export function SpptReportCharts({ data, isLoading, filters }: SpptReportChartsP
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={kecamatanNjopData} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value, true)} />
+                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
                   <YAxis type="category" dataKey="kecamatan" width={150} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="njop" fill="#0088FE" name="NJOP" />
@@ -222,7 +222,7 @@ export function SpptReportCharts({ data, isLoading, filters }: SpptReportChartsP
                 <BarChart data={kecamatanNjopData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="kecamatan" angle={-45} textAnchor="end" height={100} />
-                  <YAxis tickFormatter={(value) => formatCurrency(value, true)} />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="pbb_harus_dibayar" fill="#FFBB28" name="PBB Harus Dibayar" />
@@ -265,7 +265,7 @@ export function SpptReportCharts({ data, isLoading, filters }: SpptReportChartsP
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={kelurahanData} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value, true)} />
+                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
                   <YAxis type="category" dataKey="kelurahan" width={150} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="njop" fill="#0088FE" name="NJOP" />
@@ -285,7 +285,7 @@ export function SpptReportCharts({ data, isLoading, filters }: SpptReportChartsP
                 <BarChart data={kelurahanData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="kelurahan" angle={-45} textAnchor="end" height={100} />
-                  <YAxis tickFormatter={(value) => formatCurrency(value, true)} />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="pbb_harus_dibayar" fill="#FFBB28" name="PBB Harus Dibayar" />

@@ -10,7 +10,147 @@ import {
 
 
 /**
+ * Get dashboard statistics with optional filtering
  * @summary Get Dashboard Stats
  */
-export const dashboardGetDashboardStatsResponse = zod.any()
+export const dashboardGetDashboardStatsQueryParams = zod.object({
+  "year": zod.string().or(zod.null()).optional().describe('Filter by year (THN_PAJAK_SPPT)'),
+  "kd_propinsi": zod.string().or(zod.null()).optional().describe('Filter by province code'),
+  "kd_dati2": zod.string().or(zod.null()).optional().describe('Filter by dati2/kabupaten code'),
+  "kd_kecamatan": zod.string().or(zod.null()).optional().describe('Filter by kecamatan code'),
+  "kd_kelurahan": zod.string().or(zod.null()).optional().describe('Filter by kelurahan code')
+})
+
+export const dashboardGetDashboardStatsResponse = zod.object({
+  "total_sppt": zod.number(),
+  "total_sppt_lunas": zod.number(),
+  "total_sppt_belum_lunas": zod.number(),
+  "total_pbb_terhutang": zod.number(),
+  "total_bangunan": zod.number(),
+  "total_nilai_bangunan": zod.number(),
+  "rata_rata_luas_bangunan": zod.number(),
+  "total_propinsi": zod.number(),
+  "total_dati2": zod.number(),
+  "total_kecamatan": zod.number(),
+  "total_kelurahan": zod.number(),
+  "filtered_by": zod.string().or(zod.null()).optional(),
+  "filter_value": zod.string().or(zod.null()).optional(),
+  "year_filter": zod.string().or(zod.null()).optional()
+})
+
+/**
+ * Get available filter options for dashboard
+ * @summary Get Dashboard Filters
+ */
+export const dashboardGetDashboardFiltersQueryParams = zod.object({
+  "kd_propinsi": zod.string().or(zod.null()).optional().describe('Filter by province code for hierarchical loading'),
+  "kd_dati2": zod.string().or(zod.null()).optional().describe('Filter by dati2 code for hierarchical loading'),
+  "kd_kecamatan": zod.string().or(zod.null()).optional().describe('Filter by kecamatan code for hierarchical loading')
+})
+
+export const dashboardGetDashboardFiltersResponse = zod.object({
+  "propinsi": zod.array(zod.object({
+  "KD_PROPINSI": zod.string(),
+  "NM_PROPINSI": zod.string()
+})),
+  "dati2": zod.array(zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "NM_DATI2": zod.string()
+})),
+  "kecamatan": zod.array(zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "NM_KECAMATAN": zod.string()
+})),
+  "kelurahan": zod.array(zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_SEKTOR": zod.string(),
+  "NM_KELURAHAN": zod.string(),
+  "NO_KELURAHAN": zod.number().or(zod.null()).optional(),
+  "KD_POS_KELURAHAN": zod.string().or(zod.null()).optional()
+})),
+  "available_years": zod.array(zod.string())
+})
+
+/**
+ * Get available filter options for SPPT report
+ * @summary Get Sppt Report Filters
+ */
+export const dashboardGetSpptReportFiltersResponse = zod.object({
+  "available_years": zod.array(zod.string()),
+  "kecamatan_list": zod.array(zod.record(zod.string(), zod.any())),
+  "max_year": zod.string().or(zod.null()).optional()
+})
+
+/**
+ * Get SPPT report data with filtering and pagination
+ * @summary Get Sppt Report Data
+ */
+export const dashboardGetSpptReportDataQueryPageDefault = 1;export const dashboardGetSpptReportDataQueryLimitDefault = 50;
+export const dashboardGetSpptReportDataQueryLimitMax = 1000;
+
+
+export const dashboardGetSpptReportDataQueryParams = zod.object({
+  "year": zod.string().or(zod.null()).optional().describe('Filter by year (THN_PAJAK_SPPT)'),
+  "kd_kecamatan": zod.string().or(zod.null()).optional().describe('Filter by kecamatan code'),
+  "page": zod.number().min(1).default(dashboardGetSpptReportDataQueryPageDefault).describe('Page number'),
+  "limit": zod.number().min(1).max(dashboardGetSpptReportDataQueryLimitMax).default(dashboardGetSpptReportDataQueryLimitDefault).describe('Items per page')
+})
+
+export const dashboardGetSpptReportDataResponseDataItemLEMBARPBBDefault = 0;
+
+export const dashboardGetSpptReportDataResponse = zod.object({
+  "data": zod.array(zod.object({
+  "THN_PAJAK_SPPT": zod.string(),
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "NM_KECAMATAN": zod.string().or(zod.null()).optional(),
+  "NM_KELURAHAN": zod.string().or(zod.null()).optional(),
+  "LEMBAR_PBB": zod.number().optional(),
+  "LEMBAR_REALISASI": zod.number().or(zod.null()).optional(),
+  "LEMBAR_TUNGGAKAN": zod.number().or(zod.null()).optional(),
+  "LUAS_BUMI_SPPT": zod.number().or(zod.null()).optional(),
+  "LUAS_BNG_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_BUMI_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_BNG_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_SPPT": zod.number().or(zod.null()).optional(),
+  "PBB_TERHUTANG_SPPT": zod.number().or(zod.null()).optional(),
+  "FAKTOR_PENGURANG_SPPT": zod.number().or(zod.null()).optional(),
+  "PBB_YG_HARUS_DIBAYAR_SPPT": zod.number().or(zod.null()).optional(),
+  "REALISASI": zod.number().or(zod.null()).optional(),
+  "TUNGGAKAN": zod.number().or(zod.null()).optional()
+})),
+  "total_count": zod.number(),
+  "stats": zod.object({
+  "total_kecamatan": zod.number(),
+  "total_kelurahan": zod.number(),
+  "total_luas_bumi": zod.number(),
+  "total_luas_bangunan": zod.number(),
+  "total_njop": zod.number(),
+  "total_pbb_terhutang": zod.number(),
+  "total_pbb_harus_dibayar": zod.number(),
+  "total_realisasi": zod.number(),
+  "total_tunggakan": zod.number(),
+  "total_lembar_ketetapan": zod.number(),
+  "total_lembar_realisasi": zod.number(),
+  "total_lembar_tunggakan": zod.number(),
+  "persentase_realisasi": zod.number(),
+  "persentase_tunggakan": zod.number(),
+  "yearly_data": zod.array(zod.object({
+  "year": zod.string(),
+  "pbb_harus_dibayar": zod.number(),
+  "realisasi": zod.number(),
+  "tunggakan": zod.number()
+})),
+  "filtered_by_year": zod.string().or(zod.null()).optional(),
+  "filtered_by_kecamatan": zod.string().or(zod.null()).optional()
+})
+})
 

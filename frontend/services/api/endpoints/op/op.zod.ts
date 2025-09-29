@@ -13,7 +13,7 @@ import {
  * @summary Verifikasi
  */
 export const opVerifikasiBody = zod.object({
-  "SUBJEK_PAJAK_ID": zod.string(),
+  "NOP": zod.string(),
   "NM_WP": zod.string(),
   "KD_PROPINSI": zod.string(),
   "KD_DATI2": zod.string(),
@@ -165,4 +165,47 @@ export const opGetSpptDetailResponse = zod.object({
   "STATUS_TAGIHAN_SPPT": zod.boolean().or(zod.null()).optional(),
   "TGL_TERBIT_SPPT": zod.string().datetime({}).or(zod.null()).optional()
 })
+
+/**
+ * Get all SPPT data for all available years for a specific NOP in one request.
+Much faster than multiple individual requests.
+ * @summary Get Sppt Batch By Nop
+ */
+export const opGetSpptBatchByNopParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opGetSpptBatchByNopResponseItem = zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "THN_PAJAK_SPPT": zod.string(),
+  "NM_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "JLN_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "BLOK_KAV_NO_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "RW_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "RT_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "KOTA_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "KD_POS_WP_SPPT": zod.string().or(zod.null()).optional(),
+  "NPWP_SPPT": zod.string().or(zod.null()).optional(),
+  "TGL_JATUH_TEMPO_SPPT": zod.string().date().or(zod.null()).optional(),
+  "LUAS_BUMI_SPPT": zod.number().or(zod.null()).optional(),
+  "LUAS_BNG_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_BUMI_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_BNG_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOP_SPPT": zod.number().or(zod.null()).optional(),
+  "NJOPTKP_SPPT": zod.number().or(zod.null()).optional(),
+  "NJKP_SPPT": zod.number().or(zod.null()).optional(),
+  "PBB_TERHUTANG_SPPT": zod.number().or(zod.null()).optional(),
+  "PBB_YG_HARUS_DIBAYAR_SPPT": zod.number().or(zod.null()).optional(),
+  "STATUS_PEMBAYARAN_SPPT": zod.boolean().or(zod.null()).optional(),
+  "STATUS_TAGIHAN_SPPT": zod.boolean().or(zod.null()).optional(),
+  "TGL_TERBIT_SPPT": zod.string().datetime({}).or(zod.null()).optional()
+})
+export const opGetSpptBatchByNopResponse = zod.array(opGetSpptBatchByNopResponseItem)
 

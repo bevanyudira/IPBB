@@ -10,7 +10,7 @@ from fastapi.security import (
     HTTPBearer,
     OAuth2PasswordRequestForm,
 )
-from sqlmodel import and_, func, or_, select, update
+from sqlmodel import and_, func, or_, select, update, case, literal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 
@@ -25,8 +25,14 @@ from app.models.base import APIMessage
 from app.models.schemas import ErrorResponse
 from app.models.spop import Spop
 from app.models.sppt import Sppt
+from app.models.pembayaran_sppt import PembayaranSppt
 from app.models.dat_subjek_pajak import DatSubjekPajak
 from app.models.user import User
+from app.models.ref_kecamatan import RefKecamatan
+from app.models.ref_kelurahan import RefKelurahan
+from app.models.dat_op_bangunan import DatOpBangunan
+from app.models.kelas_bumi import KelasBumi
+from app.models.kelas_bangunan import KelasBangunan
 from .schemas import (
     SpopPaginatedResponse,
     SpopResponse,
@@ -36,6 +42,8 @@ from .schemas import (
     SpptYearsResponse,
     SpptPaginatedResponse,
     SpptObjectPaginatedResponse,
+    SpptPaymentResponse,
+    ObjectInfoResponse,
 )
 from app.core.database import get_async_session
 from sqlalchemy.dialects import mysql
@@ -273,6 +281,393 @@ async def get_sppt_years(
     return {"available_years": [{"THN_PAJAK_SPPT": r[0], "count": r[1]} for r in rows]}
 
 
+@router.get("/sppt/{year}/{nop}/payment", response_model=SpptPaymentResponse)
+async def get_sppt_payment_detail_v2(
+    year: str,
+    nop: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """
+    Get payment information for a specific SPPT. Returns grouped payment data with totals.
+    """
+    key = parse_nop(nop)
+
+    # Query to get payment data grouped by NOP and year with access control
+    # Only sum denda when STATUS_PEMBAYARAN_SPPT = 1 (paid status)
+    query = (
+        select(
+            PembayaranSppt.KD_PROPINSI,
+            PembayaranSppt.KD_DATI2,
+            PembayaranSppt.KD_KECAMATAN,
+            PembayaranSppt.KD_KELURAHAN,
+            PembayaranSppt.KD_BLOK,
+            PembayaranSppt.NO_URUT,
+            PembayaranSppt.KD_JNS_OP,
+            PembayaranSppt.THN_PAJAK_SPPT,
+            func.sum(
+                case(
+                    (Sppt.STATUS_PEMBAYARAN_SPPT == 1, PembayaranSppt.DENDA_SPPT),
+                    else_=0
+                )
+            ).label("total_denda"),
+            func.sum(PembayaranSppt.JML_SPPT_YG_DIBAYAR).label("total_dibayar"),
+            func.group_concat(PembayaranSppt.TGL_PEMBAYARAN_SPPT.distinct()).label("tanggal_pembayaran")
+        )
+        .join(
+            Spop,
+            and_(
+                PembayaranSppt.KD_PROPINSI == Spop.KD_PROPINSI,
+                PembayaranSppt.KD_DATI2 == Spop.KD_DATI2,
+                PembayaranSppt.KD_KECAMATAN == Spop.KD_KECAMATAN,
+                PembayaranSppt.KD_KELURAHAN == Spop.KD_KELURAHAN,
+                PembayaranSppt.KD_BLOK == Spop.KD_BLOK,
+                PembayaranSppt.NO_URUT == Spop.NO_URUT,
+                PembayaranSppt.KD_JNS_OP == Spop.KD_JNS_OP,
+            ),
+        )
+        .join(
+            Sppt,
+            and_(
+                PembayaranSppt.KD_PROPINSI == Sppt.KD_PROPINSI,
+                PembayaranSppt.KD_DATI2 == Sppt.KD_DATI2,
+                PembayaranSppt.KD_KECAMATAN == Sppt.KD_KECAMATAN,
+                PembayaranSppt.KD_KELURAHAN == Sppt.KD_KELURAHAN,
+                PembayaranSppt.KD_BLOK == Sppt.KD_BLOK,
+                PembayaranSppt.NO_URUT == Sppt.NO_URUT,
+                PembayaranSppt.KD_JNS_OP == Sppt.KD_JNS_OP,
+                PembayaranSppt.THN_PAJAK_SPPT == Sppt.THN_PAJAK_SPPT,
+            ),
+        )
+        .join(
+            DatSubjekPajak,
+            Spop.SUBJEK_PAJAK_ID == DatSubjekPajak.SUBJEK_PAJAK_ID,
+        )
+        .where(
+            DatSubjekPajak.EMAIL_WP == str(current_user.email),
+            PembayaranSppt.THN_PAJAK_SPPT == year,
+            PembayaranSppt.KD_PROPINSI == key["KD_PROPINSI"],
+            PembayaranSppt.KD_DATI2 == key["KD_DATI2"],
+            PembayaranSppt.KD_KECAMATAN == key["KD_KECAMATAN"],
+            PembayaranSppt.KD_KELURAHAN == key["KD_KELURAHAN"],
+            PembayaranSppt.KD_BLOK == key["KD_BLOK"],
+            PembayaranSppt.NO_URUT == key["NO_URUT"],
+            PembayaranSppt.KD_JNS_OP == key["KD_JNS_OP"],
+        )
+        .group_by(
+            PembayaranSppt.KD_PROPINSI,
+            PembayaranSppt.KD_DATI2,
+            PembayaranSppt.KD_KECAMATAN,
+            PembayaranSppt.KD_KELURAHAN,
+            PembayaranSppt.KD_BLOK,
+            PembayaranSppt.NO_URUT,
+            PembayaranSppt.KD_JNS_OP,
+            PembayaranSppt.THN_PAJAK_SPPT,
+        )
+    )
+
+    # Add retry logic for complex database queries
+    async def execute_payment_query():
+        result = await session.exec(query)
+        return result.first()
+
+    payment_data = await retry_db_operation(execute_payment_query)
+
+    if not payment_data:
+        # Return empty payment data if no payments found
+        return SpptPaymentResponse(
+            KD_PROPINSI=key["KD_PROPINSI"],
+            KD_DATI2=key["KD_DATI2"],
+            KD_KECAMATAN=key["KD_KECAMATAN"],
+            KD_KELURAHAN=key["KD_KELURAHAN"],
+            KD_BLOK=key["KD_BLOK"],
+            NO_URUT=key["NO_URUT"],
+            KD_JNS_OP=key["KD_JNS_OP"],
+            THN_PAJAK_SPPT=year,
+            total_denda=0,
+            total_dibayar=0,
+            tanggal_pembayaran=None
+        )
+
+    return SpptPaymentResponse(
+        KD_PROPINSI=payment_data[0],
+        KD_DATI2=payment_data[1],
+        KD_KECAMATAN=payment_data[2],
+        KD_KELURAHAN=payment_data[3],
+        KD_BLOK=payment_data[4],
+        NO_URUT=payment_data[5],
+        KD_JNS_OP=payment_data[6],
+        THN_PAJAK_SPPT=payment_data[7],
+        total_denda=payment_data[8] or 0,
+        total_dibayar=payment_data[9] or 0,
+        tanggal_pembayaran=payment_data[10]
+    )
+
+
+@router.get("/sppt/{nop}/info")
+async def get_object_info(
+    nop: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """
+    Get comprehensive object information including taxpayer details, location, and property values.
+    """
+    print(f"[ALWAYS PRINT] Object info endpoint reached for NOP: {nop}")
+    logger = logging.getLogger(__name__)
+    print(f"[DEBUG] Getting object info for NOP: {nop}")
+    logger.info(f"Getting object info for NOP: {nop}")
+
+    try:
+        key = parse_nop(nop)
+        print(f"[DEBUG] Parsed NOP key: {key}")
+        logger.info(f"Parsed NOP key: {key}")
+    except Exception as e:
+        print(f"[DEBUG] Error parsing NOP {nop}: {e}")
+        logger.error(f"Error parsing NOP {nop}: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid NOP format: {str(e)}")
+
+    # Complex query joining multiple tables
+    query = (
+        select(
+            # Basic info
+            Spop.KD_PROPINSI,
+            Spop.KD_DATI2,
+            Spop.KD_KECAMATAN,
+            Spop.KD_KELURAHAN,
+            Spop.KD_BLOK,
+            Spop.NO_URUT,
+            Spop.KD_JNS_OP,
+
+            # Taxpayer info from dat_subjek_pajak
+            DatSubjekPajak.NM_WP,
+            DatSubjekPajak.TELP_WP,
+            DatSubjekPajak.JALAN_WP,
+
+            # Object location from spop
+            Spop.JALAN_OP,
+            Spop.LUAS_BUMI,
+            Spop.NILAI_SISTEM_BUMI,
+
+            # Reference data
+            RefKecamatan.NM_KECAMATAN,
+            RefKelurahan.NM_KELURAHAN,
+
+            # NJOP Bumi from latest SPPT (most recent year)
+            func.max(Sppt.NJOP_BUMI_SPPT).label("njop_bumi_total"),
+
+            # Building info calculated separately to avoid JOIN multiplication
+            (
+                select(func.sum(DatOpBangunan.LUAS_BNG))
+                .where(
+                    DatOpBangunan.KD_PROPINSI == key["KD_PROPINSI"],
+                    DatOpBangunan.KD_DATI2 == key["KD_DATI2"],
+                    DatOpBangunan.KD_KECAMATAN == key["KD_KECAMATAN"],
+                    DatOpBangunan.KD_KELURAHAN == key["KD_KELURAHAN"],
+                    DatOpBangunan.KD_BLOK == key["KD_BLOK"],
+                    DatOpBangunan.NO_URUT == key["NO_URUT"],
+                    DatOpBangunan.KD_JNS_OP == key["KD_JNS_OP"],
+                )
+                .scalar_subquery()
+            ).label("total_luas_bangunan"),
+            (
+                select(func.sum(
+                    func.coalesce(
+                        func.nullif(DatOpBangunan.NILAI_INDIVIDU, 0),
+                        DatOpBangunan.NILAI_SISTEM_BNG
+                    )
+                ))
+                .where(
+                    DatOpBangunan.KD_PROPINSI == key["KD_PROPINSI"],
+                    DatOpBangunan.KD_DATI2 == key["KD_DATI2"],
+                    DatOpBangunan.KD_KECAMATAN == key["KD_KECAMATAN"],
+                    DatOpBangunan.KD_KELURAHAN == key["KD_KELURAHAN"],
+                    DatOpBangunan.KD_BLOK == key["KD_BLOK"],
+                    DatOpBangunan.NO_URUT == key["NO_URUT"],
+                    DatOpBangunan.KD_JNS_OP == key["KD_JNS_OP"],
+                )
+                .scalar_subquery()
+            ).label("total_nilai_bangunan")
+        )
+        .join(
+            DatSubjekPajak,
+            Spop.SUBJEK_PAJAK_ID == DatSubjekPajak.SUBJEK_PAJAK_ID,
+        )
+        .join(
+            RefKecamatan,
+            and_(
+                Spop.KD_PROPINSI == RefKecamatan.KD_PROPINSI,
+                Spop.KD_DATI2 == RefKecamatan.KD_DATI2,
+                Spop.KD_KECAMATAN == RefKecamatan.KD_KECAMATAN,
+            ),
+        )
+        .join(
+            RefKelurahan,
+            and_(
+                Spop.KD_PROPINSI == RefKelurahan.KD_PROPINSI,
+                Spop.KD_DATI2 == RefKelurahan.KD_DATI2,
+                Spop.KD_KECAMATAN == RefKelurahan.KD_KECAMATAN,
+                Spop.KD_KELURAHAN == RefKelurahan.KD_KELURAHAN,
+            ),
+        )
+        .join(
+            Sppt,
+            and_(
+                Spop.KD_PROPINSI == Sppt.KD_PROPINSI,
+                Spop.KD_DATI2 == Sppt.KD_DATI2,
+                Spop.KD_KECAMATAN == Sppt.KD_KECAMATAN,
+                Spop.KD_KELURAHAN == Sppt.KD_KELURAHAN,
+                Spop.KD_BLOK == Sppt.KD_BLOK,
+                Spop.NO_URUT == Sppt.NO_URUT,
+                Spop.KD_JNS_OP == Sppt.KD_JNS_OP,
+            ),
+        )
+        .where(
+            DatSubjekPajak.EMAIL_WP == str(current_user.email),
+            Spop.KD_PROPINSI == key["KD_PROPINSI"],
+            Spop.KD_DATI2 == key["KD_DATI2"],
+            Spop.KD_KECAMATAN == key["KD_KECAMATAN"],
+            Spop.KD_KELURAHAN == key["KD_KELURAHAN"],
+            Spop.KD_BLOK == key["KD_BLOK"],
+            Spop.NO_URUT == key["NO_URUT"],
+            Spop.KD_JNS_OP == key["KD_JNS_OP"],
+        )
+        .group_by(
+            Spop.KD_PROPINSI,
+            Spop.KD_DATI2,
+            Spop.KD_KECAMATAN,
+            Spop.KD_KELURAHAN,
+            Spop.KD_BLOK,
+            Spop.NO_URUT,
+            Spop.KD_JNS_OP,
+            DatSubjekPajak.NM_WP,
+            DatSubjekPajak.TELP_WP,
+            DatSubjekPajak.JALAN_WP,
+            Spop.JALAN_OP,
+            Spop.LUAS_BUMI,
+            Spop.NILAI_SISTEM_BUMI,
+            RefKecamatan.NM_KECAMATAN,
+            RefKelurahan.NM_KELURAHAN,
+        )
+    )
+    # Force reload
+
+    # Add retry logic for complex database queries
+    async def execute_object_info_query():
+        result = await session.exec(query)
+        return result.first()
+
+    try:
+        print(f"[DEBUG] Executing query for NOP: {nop} for user: {current_user.email}")
+        object_data = await retry_db_operation(execute_object_info_query)
+        print(f"[DEBUG] Object data query completed, result: {object_data is not None}")
+        logger.info(f"Object data query completed, result: {object_data is not None}")
+    except Exception as e:
+        print(f"[DEBUG] Error executing object info query: {e}")
+        logger.error(f"Error executing object info query: {e}")
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
+
+    if not object_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Object not found",
+        )
+
+    # Calculate NJOP values
+    # For land: Convert total NJOP back to per-square-meter value
+    njop_bumi = None
+    if hasattr(object_data, 'njop_bumi_total') and object_data.njop_bumi_total and object_data.LUAS_BUMI:
+        njop_bumi = int(object_data.njop_bumi_total / object_data.LUAS_BUMI)
+
+    # For building: Calculate directly from database to avoid JOIN multiplication issues
+    # Query building data separately, divide by 1000, then reference to KelasBangunan
+    print(f"[DEBUG] Starting direct building calculation for NOP: {nop}")
+    njop_bangunan = None
+    try:
+        building_query = select(
+            func.sum(
+                func.coalesce(
+                    func.nullif(DatOpBangunan.NILAI_INDIVIDU, 0),
+                    DatOpBangunan.NILAI_SISTEM_BNG
+                )
+            )
+        ).where(
+            DatOpBangunan.KD_PROPINSI == key["KD_PROPINSI"],
+            DatOpBangunan.KD_DATI2 == key["KD_DATI2"],
+            DatOpBangunan.KD_KECAMATAN == key["KD_KECAMATAN"],
+            DatOpBangunan.KD_KELURAHAN == key["KD_KELURAHAN"],
+            DatOpBangunan.KD_BLOK == key["KD_BLOK"],
+            DatOpBangunan.NO_URUT == key["NO_URUT"],
+            DatOpBangunan.KD_JNS_OP == key["KD_JNS_OP"]
+        )
+        print(f"[DEBUG] Executing direct building query for keys: {key}")
+        building_result = await session.exec(building_query)
+        building_total = building_result.first()
+        print(f"[DEBUG] Raw building query result: {building_total}")
+
+        if building_total:
+            # Divide by 1000 first as specified by user
+            building_value_per_1000 = int(building_total / 1000)
+            print(f"[DEBUG] Building value divided by 1000: {building_value_per_1000}")
+
+            # Now lookup in KelasBangunan table to get the NJOP_BANGUNAN reference value
+            kelas_query = select(KelasBangunan).where(
+                KelasBangunan.NILAI_MINIMUM <= building_value_per_1000,
+                KelasBangunan.NILAI_MAKSIMUM >= building_value_per_1000
+            )
+            kelas_result = await session.exec(kelas_query)
+            kelas_bangunan = kelas_result.first()
+
+            if kelas_bangunan:
+                # Final NJOP Bangunan = NJOP_BANGUNAN from kelas table * 1000
+                njop_bangunan = int(kelas_bangunan.NJOP_BANGUNAN * 1000)
+                print(f"[DEBUG] Found KelasBangunan: {kelas_bangunan.KELAS_BANGUNAN}, NJOP_BANGUNAN: {kelas_bangunan.NJOP_BANGUNAN}")
+                print(f"[DEBUG] Final NJOP Bangunan: {kelas_bangunan.NJOP_BANGUNAN} * 1000 = {njop_bangunan}")
+            else:
+                print(f"[ERROR] No KelasBangunan found for value: {building_value_per_1000}")
+                njop_bangunan = 0
+        else:
+            print(f"[DEBUG] No building data found for NOP: {nop}")
+            njop_bangunan = 0
+    except Exception as e:
+        print(f"[ERROR] Failed to calculate building NJOP: {e}")
+        import traceback
+        traceback.print_exc()
+        njop_bangunan = 0
+
+    print(f"[DEBUG] NOP {nop}: total_nilai_bangunan={getattr(object_data, 'total_nilai_bangunan', 'NOT_FOUND')}")
+    print(f"[DEBUG] NOP {nop}: total_luas_bangunan={getattr(object_data, 'total_luas_bangunan', 'NOT_FOUND')}")
+    print(f"[DEBUG] NOP {nop}: calculated njop_bangunan={njop_bangunan}")
+    print(f"[NJOP_FINAL] NOP {nop}: Final returned njop_bangunan={njop_bangunan}")
+
+    # Debug: Print actual object data fields
+    print(f"[DEBUG] Object data fields: NM_WP={getattr(object_data, 'NM_WP', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: TELP_WP={getattr(object_data, 'TELP_WP', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: JALAN_WP={getattr(object_data, 'JALAN_WP', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: JALAN_OP={getattr(object_data, 'JALAN_OP', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: NM_KECAMATAN={getattr(object_data, 'NM_KECAMATAN', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: NM_KELURAHAN={getattr(object_data, 'NM_KELURAHAN', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: LUAS_BUMI={getattr(object_data, 'LUAS_BUMI', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: NILAI_SISTEM_BUMI={getattr(object_data, 'NILAI_SISTEM_BUMI', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data fields: njop_bumi_total={getattr(object_data, 'njop_bumi_total', 'NOT_FOUND')}")
+    print(f"[DEBUG] Object data available attributes: {dir(object_data)}")
+
+    # Return actual object information
+    return {
+        "nomor_objek_pajak": nop,
+        "nama_wajib_pajak": getattr(object_data, 'NM_WP', None),
+        "telpon_wajib_pajak": getattr(object_data, 'TELP_WP', None),
+        "alamat_wajib_pajak": getattr(object_data, 'JALAN_WP', None),
+        "alamat_objek_pajak": getattr(object_data, 'JALAN_OP', None),
+        "kecamatan_objek_pajak": getattr(object_data, 'NM_KECAMATAN', None),
+        "kelurahan_objek_pajak": getattr(object_data, 'NM_KELURAHAN', None),
+        "luas_bumi": getattr(object_data, 'LUAS_BUMI', None),
+        "njop_bumi": njop_bumi,
+        "luas_bangunan": getattr(object_data, 'total_luas_bangunan', None),
+        "njop_bangunan": njop_bangunan,
+    }
+
+
 @router.get(
     "/sppt/{year}/{nop}",
     response_model=SpptResponse,
@@ -287,7 +682,7 @@ async def get_sppt_detail(
     Get detailed SPPT data for a specific property (object) and year. Use after selecting object and year. NOP is a single string.
     """
     key = parse_nop(nop)
-    
+
     # First try the full query with joins for access control
     query = (
         select(Sppt)
@@ -348,7 +743,7 @@ async def get_sppt_detail(
             return direct_result.first()
 
         sppt = await retry_db_operation(execute_direct_query)
-    
+
     if not sppt:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

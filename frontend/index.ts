@@ -7,3 +7,6 @@ export * from './services/api/endpoints/profile/profile';
 export * from './services/api/endpoints/profile/profile.zod';
 export * from './services/api/endpoints/dashboard/dashboard';
 export * from './services/api/endpoints/dashboard/dashboard.zod';
+export * from './services/api/endpoints/admin/admin';
+export * from './services/api/endpoints/fastAPI.schemas.zod';
+export * from './services/api/endpoints/admin/admin.zod';

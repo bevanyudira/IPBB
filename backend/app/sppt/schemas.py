@@ -138,3 +138,40 @@ class SpptObjectResponse(SQLModel):
 class SpptObjectPaginatedResponse(SQLModel):
     data: List[SpptObjectResponse]
     meta: PaginationMeta
+
+
+class SpptPaymentResponse(SQLModel):
+    KD_PROPINSI: str
+    KD_DATI2: str
+    KD_KECAMATAN: str
+    KD_KELURAHAN: str
+    KD_BLOK: str
+    NO_URUT: str
+    KD_JNS_OP: str
+    THN_PAJAK_SPPT: str
+    total_denda: Optional[int] = None
+    total_dibayar: Optional[int] = None
+    tanggal_pembayaran: Optional[str] = None  # GROUP_CONCAT result as string
+
+
+class ObjectInfoResponse(SQLModel):
+    # Basic object identification
+    nomor_objek_pajak: str
+
+    # Taxpayer information
+    nama_wajib_pajak: Optional[str] = None
+    telpon_wajib_pajak: Optional[str] = None
+    alamat_wajib_pajak: Optional[str] = None
+
+    # Object location
+    alamat_objek_pajak: Optional[str] = None
+    kecamatan_objek_pajak: Optional[str] = None
+    kelurahan_objek_pajak: Optional[str] = None
+
+    # Land information
+    luas_bumi: Optional[int] = None
+    njop_bumi: Optional[int] = None
+
+    # Building information
+    luas_bangunan: Optional[int] = None
+    njop_bangunan: Optional[int] = None

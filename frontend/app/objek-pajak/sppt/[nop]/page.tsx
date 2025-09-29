@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/table";
 import {
   useOpGetSpptYears,
+  useOpGetObjectInfo,
   opGetSpptDetail,
 } from "@/services/api/endpoints/op/op";
+import { clientFetcher } from "@/lib/orval/mutator";
 import type { SpptYearResponse } from "@/services/api/models/spptYearResponse";
 import {
   MapPin,
@@ -58,8 +60,23 @@ interface YearSummaryData {
   NJOP_BNG_SPPT?: number | null;
   PBB_YG_HARUS_DIBAYAR_SPPT?: number | null;
   STATUS_PEMBAYARAN_SPPT?: boolean | null;
+  total_dibayar?: number | null;
+  tanggal_pembayaran?: string | null;
   loading?: boolean;
   error?: boolean;
+}
+
+// Manual API function for payment data
+async function getPaymentDetail(year: string, nop: string) {
+  try {
+    return await clientFetcher({
+      url: `/op/sppt/${year}/${nop}/payment`,
+      method: 'GET'
+    });
+  } catch (error) {
+    console.error('Error fetching payment data:', error);
+    return null;
+  }
 }
 
 export default function Page() {
@@ -73,6 +90,16 @@ export default function Page() {
 
   // Fetch available years for selected NOP
   const { trigger: fetchYears } = useOpGetSpptYears();
+
+  // Fetch comprehensive object info
+  const { data: objectInfo, isLoading: objectInfoLoading, error: objectInfoError } = useOpGetObjectInfo(nop, {
+    swr: {
+      refreshInterval: 0,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 0,
+    }
+  });
 
   // Load years first, then batch load details efficiently
   useEffect(() => {
@@ -107,6 +134,7 @@ export default function Page() {
               const actualIndex = i + batchIndex;
               try {
                 const data = await opGetSpptDetail(year.THN_PAJAK_SPPT, nop);
+                const paymentData = await getPaymentDetail(year.THN_PAJAK_SPPT, nop);
 
                 setYearSummaries(prev =>
                   prev.map((item, idx) =>
@@ -120,6 +148,9 @@ export default function Page() {
                       NJOP_BNG_SPPT: data.NJOP_BNG_SPPT,
                       PBB_YG_HARUS_DIBAYAR_SPPT: data.PBB_YG_HARUS_DIBAYAR_SPPT,
                       STATUS_PEMBAYARAN_SPPT: data.STATUS_PEMBAYARAN_SPPT,
+                      total_dibayar: paymentData?.total_dibayar || 0,
+                      total_denda: paymentData?.total_denda || 0,
+                      tanggal_pembayaran: paymentData?.tanggal_pembayaran || null,
                       loading: false,
                       error: false,
                     } : item
@@ -159,23 +190,48 @@ export default function Page() {
     window.print();
   };
 
-  // Calculate Denda (penalty) - 2% per month from due date, max 48%
-  const calculateDenda = (pbbAmount: number | null | undefined, dueDate: string | null | undefined, isPaid: boolean | null | undefined) => {
+  // Calculate Denda (penalty) based on MySQL function logic
+  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, isPaid: boolean | null, objectInfo: any) => {
     if (!pbbAmount || !dueDate || isPaid) return 0;
 
     const due = new Date(dueDate);
     const now = new Date();
 
-    // If not yet overdue, no penalty
-    if (now <= due) return 0;
+    // Calculate month difference using PERIOD_DIFF logic
+    const dueDateYear = due.getFullYear();
+    const dueDateMonth = due.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
 
-    // Calculate months overdue
-    const monthsDiff = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    const selisihBulan = (currentYear * 100 + currentMonth) - (dueDateYear * 100 + dueDateMonth);
+    const monthsDiff = Math.floor(selisihBulan / 100) * 12 + (selisihBulan % 100);
 
-    // 2% per month, maximum 48%
-    const penaltyRate = Math.min(monthsDiff * 0.02, 0.48);
+    if (monthsDiff <= 0) return 0;
 
-    return Math.floor(pbbAmount * penaltyRate);
+    // Determine max months based on region and year
+    let bulanMax = 24; // default
+    const kdPropinsi = objectInfo?.KD_PROPINSI || '';
+    const kdDati2 = objectInfo?.KD_DATI2 || '';
+    const regionCode = kdPropinsi + kdDati2;
+
+    if (regionCode === '2101' && dueDateYear >= 2012) {
+      bulanMax = 15;
+    }
+
+    // Determine penalty rate based on region and year
+    let dendaRate = 0.02; // default 2%
+    if (regionCode === '5102' && dueDateYear >= 2024) {
+      dendaRate = 0.01; // 1%
+    }
+
+    // Calculate effective months (capped at max)
+    const bulanDenda = Math.min(monthsDiff, bulanMax);
+
+    // Calculate denda
+    const calculatedDenda = dendaRate * bulanDenda * pbbAmount;
+
+    // Return 0 if calculated denda is negative, otherwise return the calculated amount
+    return calculatedDenda < 0 ? 0 : Math.floor(calculatedDenda);
   };
 
   // Calculate Tagihan (total bill) - PBB + Denda
@@ -379,6 +435,80 @@ export default function Page() {
               </CardContent>
             </Card>
 
+            {/* Comprehensive Object Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Informasi Objek dan Wajib Pajak
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {objectInfoLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(11)].map((_, i) => (
+                      <Skeleton key={i} className="h-16" />
+                    ))}
+                  </div>
+                ) : objectInfoError ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>
+                      Gagal memuat informasi objek pajak.
+                    </AlertDescription>
+                  </Alert>
+                ) : objectInfo ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Nomor Objek Pajak:</span>
+                      <span className="font-mono text-right w-3/5">{objectInfo.nomor_objek_pajak}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Nama Wajib Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.nama_wajib_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Telpon Wajib Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.telpon_wajib_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Alamat Wajib Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.alamat_wajib_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Alamat Objek Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.alamat_objek_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Kecamatan Objek Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.kecamatan_objek_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Kelurahan Objek Pajak:</span>
+                      <span className="text-right w-3/5">{objectInfo.kelurahan_objek_pajak || '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Luas Bumi:</span>
+                      <span className="text-right w-3/5">{objectInfo.luas_bumi ? `${objectInfo.luas_bumi.toLocaleString()} m²` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">NJOP Bumi:</span>
+                      <span className="text-right w-3/5">{objectInfo.njop_bumi ? formatCurrency(objectInfo.njop_bumi) : '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">Luas Bangunan:</span>
+                      <span className="text-right w-3/5">{objectInfo.luas_bangunan ? `${objectInfo.luas_bangunan.toLocaleString()} m²` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-medium text-sm w-2/5">NJOP Bangunan:</span>
+                      <span className="text-right w-3/5">{objectInfo.njop_bangunan ? formatCurrency(objectInfo.njop_bangunan) : '-'}</span>
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
             {/* Year selection */}
             <Card>
               <CardHeader className="pb-4">
@@ -427,28 +557,18 @@ export default function Page() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-[100px]">Tahun</TableHead>
-                            <TableHead>Nama Wajib Pajak</TableHead>
-                            <TableHead>Jatuh Tempo</TableHead>
-                            <TableHead className="text-right">
-                              Luas Bumi
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Luas Bangunan
-                            </TableHead>
-                            <TableHead className="text-right">
-                              NJOP Bumi
-                            </TableHead>
-                            <TableHead className="text-right">
-                              NJOP Bangunan
-                            </TableHead>
                             <TableHead className="text-right">
                               PBB Terhutang
                             </TableHead>
                             <TableHead className="text-right">
                               Denda
                             </TableHead>
+                            <TableHead>Jatuh Tempo</TableHead>
                             <TableHead className="text-right">
-                              Tagihan
+                              Dibayar
+                            </TableHead>
+                            <TableHead className="text-right">
+                              Tgl Bayar
                             </TableHead>
                           </TableRow>
                         </TableHeader>
@@ -458,32 +578,20 @@ export default function Page() {
                               <TableCell>
                                 <Skeleton className="h-4 w-16" />
                               </TableCell>
-                              <TableCell>
-                                <Skeleton className="h-4 w-32" />
+                              <TableCell className="text-right">
+                                <Skeleton className="h-4 w-24 ml-auto" />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Skeleton className="h-4 w-20 ml-auto" />
                               </TableCell>
                               <TableCell>
                                 <Skeleton className="h-4 w-24" />
                               </TableCell>
                               <TableCell className="text-right">
-                                <Skeleton className="h-4 w-16 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-16 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-20 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-20 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
                                 <Skeleton className="h-4 w-24 ml-auto" />
                               </TableCell>
                               <TableCell className="text-right">
                                 <Skeleton className="h-4 w-20 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-24 ml-auto" />
                               </TableCell>
                             </TableRow>
                           ))}
@@ -507,18 +615,6 @@ export default function Page() {
                                 <TableHead className="w-[100px]">
                                   Tahun
                                 </TableHead>
-                                <TableHead>
-                                  Nama Wajib Pajak <br />
-                                  Jatuh Tempo
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  Luas Bumi <br />
-                                  Luas Bangunan
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  NJOP Bumi <br />
-                                  NJOP Bangunan
-                                </TableHead>
                                 <TableHead className="text-right w-[80px]">
                                   Status
                                 </TableHead>
@@ -528,8 +624,14 @@ export default function Page() {
                                 <TableHead className="text-right">
                                   Denda
                                 </TableHead>
+                                <TableHead>
+                                  Jatuh Tempo
+                                </TableHead>
                                 <TableHead className="text-right">
-                                  Tagihan
+                                  Dibayar
+                                </TableHead>
+                                <TableHead className="text-right">
+                                  Tgl Bayar
                                 </TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                               </TableRow>
@@ -544,93 +646,12 @@ export default function Page() {
                                 .map((yearData) => (
                                   <TableRow
                                     key={yearData.THN_PAJAK_SPPT}
-                                    className="cursor-pointer hover:bg-blue-50 hover:dark:bg-blue-800/20 transition-colors group"
-                                    onClick={() =>
-                                      handleSelectYear(yearData.THN_PAJAK_SPPT)
-                                    }
                                   >
                                     <TableCell className="font-medium">
                                       <div className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4 text-primary" />
                                         {yearData.THN_PAJAK_SPPT}
                                       </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-32" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          Error loading
-                                        </span>
-                                      ) : (
-                                        yearData.NM_WP_SPPT || "-"
-                                      )}
-                                      <br />
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-24" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        formatDate(
-                                          yearData.TGL_JATUH_TEMPO_SPPT
-                                        ) || "-"
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-16 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : yearData.LUAS_BUMI_SPPT ? (
-                                        `${yearData.LUAS_BUMI_SPPT} m²`
-                                      ) : (
-                                        "-"
-                                      )}
-                                      <br />
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-16 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : yearData.LUAS_BNG_SPPT ? (
-                                        `${yearData.LUAS_BNG_SPPT} m²`
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-20 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        <span className="text-sm">
-                                          {formatCurrency(
-                                            yearData.NJOP_BUMI_SPPT
-                                          )}
-                                        </span>
-                                      )}
-                                      <br />
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-20 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        <span className="text-sm">
-                                          {formatCurrency(
-                                            yearData.NJOP_BNG_SPPT
-                                          )}
-                                        </span>
-                                      )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                       {yearData.loading ? (
@@ -676,10 +697,13 @@ export default function Page() {
                                         </span>
                                       ) : (
                                         (() => {
-                                          const denda = calculateDenda(
+                                          // Only show denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
+                                          const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
+                                          const denda = isPaid ? 0 : calculateDenda(
                                             yearData.PBB_YG_HARUS_DIBAYAR_SPPT,
                                             yearData.TGL_JATUH_TEMPO_SPPT,
-                                            yearData.STATUS_PEMBAYARAN_SPPT
+                                            isPaid,
+                                            objectInfo
                                           );
                                           return (
                                             <span className={`font-medium ${denda > 0 ? 'text-red-600' : ''}`}>
@@ -687,6 +711,19 @@ export default function Page() {
                                             </span>
                                           );
                                         })()
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      {yearData.loading ? (
+                                        <Skeleton className="h-4 w-24" />
+                                      ) : yearData.error ? (
+                                        <span className="text-red-500 text-sm">
+                                          -
+                                        </span>
+                                      ) : (
+                                        formatDate(
+                                          yearData.TGL_JATUH_TEMPO_SPPT
+                                        ) || "-"
                                       )}
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -697,22 +734,26 @@ export default function Page() {
                                           -
                                         </span>
                                       ) : (
-                                        (() => {
-                                          const denda = calculateDenda(
-                                            yearData.PBB_YG_HARUS_DIBAYAR_SPPT,
-                                            yearData.TGL_JATUH_TEMPO_SPPT,
-                                            yearData.STATUS_PEMBAYARAN_SPPT
-                                          );
-                                          const tagihan = calculateTagihan(
-                                            yearData.PBB_YG_HARUS_DIBAYAR_SPPT,
-                                            denda
-                                          );
-                                          return (
-                                            <span className="font-bold text-blue-600">
-                                              {formatCurrency(tagihan)}
-                                            </span>
-                                          );
-                                        })()
+                                        <span className="font-semibold text-green-600">
+                                          {formatCurrency(yearData.total_dibayar)}
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {yearData.loading ? (
+                                        <Skeleton className="h-4 w-24 ml-auto" />
+                                      ) : yearData.error ? (
+                                        <span className="text-red-500 text-sm">
+                                          -
+                                        </span>
+                                      ) : yearData.tanggal_pembayaran ? (
+                                        <span className="text-sm">
+                                          {yearData.tanggal_pembayaran.split(',').map((date, idx) => (
+                                            <div key={idx}>{formatDate(date.trim())}</div>
+                                          ))}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
                                       )}
                                     </TableCell>
                                     <TableCell>
@@ -745,20 +786,26 @@ export default function Page() {
 
                           const totalDenda = yearSummaries.reduce((sum, y) => {
                             if (y.loading || y.error) return sum;
-                            const denda = calculateDenda(
+                            // Only calculate denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
+                            const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
+                            const denda = isPaid ? 0 : calculateDenda(
                               y.PBB_YG_HARUS_DIBAYAR_SPPT,
                               y.TGL_JATUH_TEMPO_SPPT,
-                              y.STATUS_PEMBAYARAN_SPPT
+                              isPaid,
+                              objectInfo
                             );
                             return sum + denda;
                           }, 0);
 
                           const totalTagihan = yearSummaries.reduce((sum, y) => {
                             if (y.loading || y.error) return sum;
-                            const denda = calculateDenda(
+                            // Only calculate denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
+                            const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
+                            const denda = isPaid ? 0 : calculateDenda(
                               y.PBB_YG_HARUS_DIBAYAR_SPPT,
                               y.TGL_JATUH_TEMPO_SPPT,
-                              y.STATUS_PEMBAYARAN_SPPT
+                              isPaid,
+                              objectInfo
                             );
                             const tagihan = calculateTagihan(y.PBB_YG_HARUS_DIBAYAR_SPPT, denda);
                             return sum + tagihan;
@@ -788,14 +835,6 @@ export default function Page() {
                                 </span>
                                 <div className="text-lg font-semibold text-orange-600">
                                   {formatCurrency(totalDenda)}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-sm font-medium block">
-                                  Total Tagihan
-                                </span>
-                                <div className="text-xl font-bold text-blue-600">
-                                  {formatCurrency(totalTagihan)}
                                 </div>
                               </div>
                             </div>

@@ -10,6 +10,17 @@ import type {
   SWRConfiguration
 } from 'swr';
 
+import type {
+  DashboardFiltersResponse,
+  DashboardGetDashboardFiltersParams,
+  DashboardGetDashboardStatsParams,
+  DashboardGetSpptReportDataParams,
+  DashboardStatsResponse,
+  HTTPValidationError,
+  SpptReportFiltersResponse,
+  SpptReportTableResponse
+} from '../../models';
+
 import { clientFetcher } from '../../../../lib/orval/mutator';
 import type { ErrorType } from '../../../../lib/orval/mutator';
 
@@ -20,35 +31,156 @@ import type { ErrorType } from '../../../../lib/orval/mutator';
 
   
 /**
+ * Get dashboard statistics with optional filtering
  * @summary Get Dashboard Stats
  */
 export const dashboardGetDashboardStats = (
-    
+    params?: DashboardGetDashboardStatsParams,
  options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<unknown>(
-    {url: `/api/dashboard/stats`, method: 'GET'
+    return clientFetcher<DashboardStatsResponse>(
+    {url: `/dashboard/stats`, method: 'GET',
+        params
     },
     options);
   }
 
 
 
-export const getDashboardGetDashboardStatsKey = () => [`/api/dashboard/stats`] as const;
+export const getDashboardGetDashboardStatsKey = (params?: DashboardGetDashboardStatsParams,) => [`/dashboard/stats`, ...(params ? [params]: [])] as const;
 
 export type DashboardGetDashboardStatsQueryResult = NonNullable<Awaited<ReturnType<typeof dashboardGetDashboardStats>>>
-export type DashboardGetDashboardStatsQueryError = ErrorType<unknown>
+export type DashboardGetDashboardStatsQueryError = ErrorType<HTTPValidationError>
 
 /**
  * @summary Get Dashboard Stats
  */
-export const useDashboardGetDashboardStats = <TError = ErrorType<unknown>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof dashboardGetDashboardStats>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+export const useDashboardGetDashboardStats = <TError = ErrorType<HTTPValidationError>>(
+  params?: DashboardGetDashboardStatsParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof dashboardGetDashboardStats>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
 ) => {
   const {swr: swrOptions, request: requestOptions} = options ?? {}
 
   const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getDashboardGetDashboardStatsKey() : null);
-  const swrFn = () => dashboardGetDashboardStats(requestOptions)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getDashboardGetDashboardStatsKey(params) : null);
+  const swrFn = () => dashboardGetDashboardStats(params, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Get available filter options for dashboard
+ * @summary Get Dashboard Filters
+ */
+export const dashboardGetDashboardFilters = (
+    params?: DashboardGetDashboardFiltersParams,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<DashboardFiltersResponse>(
+    {url: `/dashboard/filters`, method: 'GET',
+        params
+    },
+    options);
+  }
+
+
+
+export const getDashboardGetDashboardFiltersKey = (params?: DashboardGetDashboardFiltersParams,) => [`/dashboard/filters`, ...(params ? [params]: [])] as const;
+
+export type DashboardGetDashboardFiltersQueryResult = NonNullable<Awaited<ReturnType<typeof dashboardGetDashboardFilters>>>
+export type DashboardGetDashboardFiltersQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Dashboard Filters
+ */
+export const useDashboardGetDashboardFilters = <TError = ErrorType<HTTPValidationError>>(
+  params?: DashboardGetDashboardFiltersParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof dashboardGetDashboardFilters>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getDashboardGetDashboardFiltersKey(params) : null);
+  const swrFn = () => dashboardGetDashboardFilters(params, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Get available filter options for SPPT report
+ * @summary Get Sppt Report Filters
+ */
+export const dashboardGetSpptReportFilters = (
+    
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<SpptReportFiltersResponse>(
+    {url: `/dashboard/sppt-report/filters`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getDashboardGetSpptReportFiltersKey = () => [`/dashboard/sppt-report/filters`] as const;
+
+export type DashboardGetSpptReportFiltersQueryResult = NonNullable<Awaited<ReturnType<typeof dashboardGetSpptReportFilters>>>
+export type DashboardGetSpptReportFiltersQueryError = ErrorType<unknown>
+
+/**
+ * @summary Get Sppt Report Filters
+ */
+export const useDashboardGetSpptReportFilters = <TError = ErrorType<unknown>>(
+   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof dashboardGetSpptReportFilters>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getDashboardGetSpptReportFiltersKey() : null);
+  const swrFn = () => dashboardGetSpptReportFilters(requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Get SPPT report data with filtering and pagination
+ * @summary Get Sppt Report Data
+ */
+export const dashboardGetSpptReportData = (
+    params?: DashboardGetSpptReportDataParams,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<SpptReportTableResponse>(
+    {url: `/dashboard/sppt-report/data`, method: 'GET',
+        params
+    },
+    options);
+  }
+
+
+
+export const getDashboardGetSpptReportDataKey = (params?: DashboardGetSpptReportDataParams,) => [`/dashboard/sppt-report/data`, ...(params ? [params]: [])] as const;
+
+export type DashboardGetSpptReportDataQueryResult = NonNullable<Awaited<ReturnType<typeof dashboardGetSpptReportData>>>
+export type DashboardGetSpptReportDataQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Sppt Report Data
+ */
+export const useDashboardGetSpptReportData = <TError = ErrorType<HTTPValidationError>>(
+  params?: DashboardGetSpptReportDataParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof dashboardGetSpptReportData>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getDashboardGetSpptReportDataKey(params) : null);
+  const swrFn = () => dashboardGetSpptReportData(params, requestOptions)
 
   const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
 

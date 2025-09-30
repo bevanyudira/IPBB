@@ -59,15 +59,23 @@ interface YearSummaryData {
   NJOP_BUMI_SPPT?: number | null;
   NJOP_BNG_SPPT?: number | null;
   PBB_YG_HARUS_DIBAYAR_SPPT?: number | null;
-  STATUS_PEMBAYARAN_SPPT?: boolean | null;
+  STATUS_PEMBAYARAN_SPPT?: number | boolean | null;
   total_dibayar?: number | null;
+  total_denda?: number | null;
   tanggal_pembayaran?: string | null;
   loading?: boolean;
   error?: boolean;
 }
 
+// Interface for payment data
+interface PaymentData {
+  total_dibayar?: number;
+  total_denda?: number;
+  tanggal_pembayaran?: string;
+}
+
 // Manual API function for payment data
-async function getPaymentDetail(year: string, nop: string) {
+async function getPaymentDetail(year: string, nop: string): Promise<PaymentData | null> {
   try {
     return await clientFetcher({
       url: `/op/sppt/${year}/${nop}/payment`,
@@ -87,6 +95,8 @@ export default function Page() {
 
   const [yearSummaries, setYearSummaries] = useState<YearSummaryData[]>([]);
   const [yearsLoading, setYearsLoading] = useState(false);
+  const [printMode, setPrintMode] = useState<'summary' | 'detail' | null>(null);
+  const [selectedYearData, setSelectedYearData] = useState<YearSummaryData | null>(null);
 
   // Fetch available years for selected NOP
   const { trigger: fetchYears } = useOpGetSpptYears();
@@ -185,9 +195,27 @@ export default function Page() {
     router.push("/objek-pajak/sppt");
   };
 
-  // Handle print functionality
+  // Handle print summary (Cetak button)
   const handlePrint = () => {
-    window.print();
+    setPrintMode('summary');
+    setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+    }, 100);
+  };
+
+  // Handle print SPPT for specific year (Cetak SPPT button)
+  const handlePrintSppt = (year: string) => {
+    const yearData = yearSummaries.find(y => y.THN_PAJAK_SPPT === year);
+    if (yearData && !yearData.loading && !yearData.error) {
+      setSelectedYearData(yearData);
+      setPrintMode('detail');
+      setTimeout(() => {
+        window.print();
+        setPrintMode(null);
+        setSelectedYearData(null);
+      }, 100);
+    }
   };
 
   // Calculate Denda (penalty) based on MySQL function logic
@@ -259,136 +287,430 @@ export default function Page() {
       {/* Print styles */}
       <style jsx global>{`
         @media print {
+          /* Force light mode and white background everywhere */
           * {
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background: white !important;
+            background-color: white !important;
+            background-image: none !important;
           }
 
-          body {
+          html, body {
             background: white !important;
+            background-color: white !important;
             color: black !important;
             font-family: 'Times New Roman', serif !important;
-            font-size: 12pt !important;
-            line-height: 1.4 !important;
+            font-size: 11pt !important;
+            line-height: 1.3 !important;
           }
 
+          /* Hide sidebar and navigation */
+          [data-sidebar],
+          header,
+          button,
           .print\\:hidden {
             display: none !important;
           }
 
-          /* Hide sidebar and other UI elements when printing */
-          [data-sidebar] {
-            display: none !important;
-          }
-
-          /* Ensure content takes full width when printing */
+          /* Full width for print */
           [data-sidebar-inset] {
-            margin-left: 0 !important;
+            margin: 0 !important;
             width: 100% !important;
+            background: white !important;
           }
 
-          /* Hide all UI elements */
-          button, .no-print {
+          /* Show only print content */
+          .screen-only {
             display: none !important;
           }
 
-          /* Reset all colors to black and white */
-          .bg-primary\\/5, .bg-primary\\/10, .border-primary\\/20,
-          .text-primary, .text-green-600, .text-red-600,
-          .text-green-400, .text-red-400, .text-blue-400,
-          .bg-green-100, .bg-red-100, .bg-blue-50 {
-            background: white !important;
-            color: black !important;
-            border-color: black !important;
-          }
-
-          /* Card styling for print */
-          .card, [class*="card"] {
-            background: white !important;
-            border: 1px solid black !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            margin-bottom: 12pt !important;
-          }
-
-          /* Table styling for print */
-          table {
-            border-collapse: collapse !important;
-            width: 100% !important;
-            border: 1px solid black !important;
-            page-break-inside: auto !important;
-          }
-
-          th, td {
-            border: 1px solid black !important;
-            padding: 6pt !important;
-            text-align: left !important;
-            background: white !important;
-            color: black !important;
-            font-size: 10pt !important;
-          }
-
-          th {
-            font-weight: bold !important;
-            background: white !important;
-          }
-
-          tr {
-            page-break-inside: avoid !important;
-            page-break-after: auto !important;
-          }
-
-          /* Typography for print */
-          h1, h2, h3, h4, h5, h6 {
-            color: black !important;
-            font-weight: bold !important;
-            margin: 6pt 0 !important;
-          }
-
-          h1 { font-size: 18pt !important; }
-          h2 { font-size: 16pt !important; }
-          h3 { font-size: 14pt !important; }
-
-          /* Remove all background colors and effects */
-          * {
-            background-color: white !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-          }
-
-          /* Badge styling for print */
-          .badge, [class*="badge"] {
-            background: white !important;
-            color: black !important;
-            border: 1px solid black !important;
-            border-radius: 0 !important;
-            padding: 2pt 4pt !important;
-            font-size: 9pt !important;
-          }
-
-          /* Summary section styling */
-          .summary-section {
-            border: 2px solid black !important;
-            padding: 8pt !important;
-            margin: 12pt 0 !important;
+          .print-only {
+            display: block !important;
             background: white !important;
           }
 
           /* Page setup */
           @page {
-            margin: 0.75in !important;
+            margin: 0.5in !important;
             size: A4 !important;
+            background: white !important;
           }
 
-          /* Content container */
-          .print-container {
-            max-width: none !important;
+          /* Print layout */
+          .print-layout {
+            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+          }
+
+          /* Table styling */
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            border: 1px solid #000 !important;
+            margin: 10pt 0 !important;
+            background: white !important;
+          }
+
+          th, td {
+            border: 1px solid #000 !important;
+            padding: 4pt 6pt !important;
+            text-align: left !important;
+            background: white !important;
+            background-color: white !important;
+            color: black !important;
+            font-size: 9pt !important;
+          }
+
+          th {
+            font-weight: bold !important;
+            background: white !important;
+            background-color: white !important;
+          }
+
+          tr {
+            page-break-inside: avoid !important;
+            background: white !important;
+          }
+
+          /* Typography - force black text */
+          h1, h2, h3, h4, h5, h6, p, span, div, td, th {
+            color: black !important;
+            background: transparent !important;
+            background-color: transparent !important;
+          }
+
+          h1 { font-size: 16pt !important; margin: 8pt 0 !important; }
+          h2 { font-size: 14pt !important; margin: 6pt 0 !important; }
+          h3 { font-size: 12pt !important; margin: 4pt 0 !important; }
+
+          .print-title {
+            text-align: center !important;
+            border-bottom: 2px solid #000 !important;
+            padding-bottom: 8pt !important;
+            margin-bottom: 12pt !important;
+            background: white !important;
+          }
+
+          .print-info-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6pt !important;
+            margin: 10pt 0 !important;
+            border: 1px solid #000 !important;
+            padding: 8pt !important;
+            background: white !important;
+          }
+
+          .print-info-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            padding: 2pt 0 !important;
+            font-size: 10pt !important;
+            background: transparent !important;
+          }
+
+          .print-info-label {
+            font-weight: bold !important;
+            width: 40% !important;
+            color: black !important;
+          }
+
+          .print-info-value {
+            width: 60% !important;
+            text-align: right !important;
+            color: black !important;
+          }
+
+          /* Force remove any dark mode or colored backgrounds */
+          div, section, article, main {
+            background: white !important;
+            background-color: white !important;
+            color: black !important;
           }
         }
       `}</style>
+
+      {/* Print-only content for summary mode */}
+      {printMode === 'summary' && (
+        <div className="print-only hidden">
+          <div className="print-layout">
+            <div className="print-title">
+              <h1>REKAPITULASI SURAT PEMBERITAHUAN PAJAK TERHUTANG</h1>
+              <h2>PAJAK BUMI DAN BANGUNAN</h2>
+              <p style={{ margin: '6pt 0' }}>NOP: {formatNop(nop)}</p>
+              <p style={{ fontSize: '9pt', margin: '4pt 0' }}>
+                Dicetak pada: {new Date().toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            {objectInfo && (
+              <div className="print-info-grid">
+                <div className="print-info-row">
+                  <span className="print-info-label">Nama WP:</span>
+                  <span className="print-info-value">{objectInfo.nama_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Telp WP:</span>
+                  <span className="print-info-value">{objectInfo.telpon_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Alamat WP:</span>
+                  <span className="print-info-value">{objectInfo.alamat_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Alamat OP:</span>
+                  <span className="print-info-value">{objectInfo.alamat_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Kecamatan:</span>
+                  <span className="print-info-value">{objectInfo.kecamatan_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Kelurahan:</span>
+                  <span className="print-info-value">{objectInfo.kelurahan_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Luas Bumi:</span>
+                  <span className="print-info-value">{objectInfo.luas_bumi ? `${objectInfo.luas_bumi.toLocaleString()} m²` : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">NJOP Bumi:</span>
+                  <span className="print-info-value">{objectInfo.njop_bumi ? formatCurrency(objectInfo.njop_bumi) : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Luas Bangunan:</span>
+                  <span className="print-info-value">{objectInfo.luas_bangunan ? `${objectInfo.luas_bangunan.toLocaleString()} m²` : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">NJOP Bangunan:</span>
+                  <span className="print-info-value">{objectInfo.njop_bangunan ? formatCurrency(objectInfo.njop_bangunan) : '-'}</span>
+                </div>
+              </div>
+            )}
+
+            <h3 style={{ marginTop: '12pt' }}>Daftar Tahun Pajak</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '10%' }}>Tahun</th>
+                  <th style={{ width: '15%', textAlign: 'center' }}>Status</th>
+                  <th style={{ width: '20%', textAlign: 'right' }}>PBB Terhutang</th>
+                  <th style={{ width: '15%', textAlign: 'right' }}>Denda</th>
+                  <th style={{ width: '15%' }}>Jatuh Tempo</th>
+                  <th style={{ width: '15%', textAlign: 'right' }}>Dibayar</th>
+                  <th style={{ width: '10%' }}>Tgl Bayar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {yearSummaries
+                  .filter(y => !y.loading && !y.error)
+                  .sort((a, b) => parseInt(b.THN_PAJAK_SPPT) - parseInt(a.THN_PAJAK_SPPT))
+                  .map((yearData) => {
+                    const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
+                    const denda = isPaid ? 0 : calculateDenda(
+                      yearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
+                      yearData.TGL_JATUH_TEMPO_SPPT || null,
+                      isPaid,
+                      objectInfo
+                    );
+                    return (
+                      <tr key={yearData.THN_PAJAK_SPPT}>
+                        <td>{yearData.THN_PAJAK_SPPT}</td>
+                        <td style={{ textAlign: 'center' }}>{isPaid ? 'LUNAS' : 'BELUM LUNAS'}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(yearData.PBB_YG_HARUS_DIBAYAR_SPPT)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(denda)}</td>
+                        <td>{formatDate(yearData.TGL_JATUH_TEMPO_SPPT) || '-'}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(yearData.total_dibayar)}</td>
+                        <td>{yearData.tanggal_pembayaran ? formatDate(yearData.tanggal_pembayaran.split(',')[0]) : '-'}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+
+            {/* Summary totals */}
+            {(() => {
+              const totalLunas = yearSummaries.reduce((sum, y) => {
+                if (y.loading || y.error) return sum;
+                return y.STATUS_PEMBAYARAN_SPPT ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0) : sum;
+              }, 0);
+
+              const totalTunggakan = yearSummaries.reduce((sum, y) => {
+                if (y.loading || y.error) return sum;
+                return !y.STATUS_PEMBAYARAN_SPPT ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0) : sum;
+              }, 0);
+
+              const totalDenda = yearSummaries.reduce((sum, y) => {
+                if (y.loading || y.error) return sum;
+                const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
+                const denda = isPaid ? 0 : calculateDenda(
+                  y.PBB_YG_HARUS_DIBAYAR_SPPT || null,
+                  y.TGL_JATUH_TEMPO_SPPT || null,
+                  isPaid,
+                  objectInfo
+                );
+                return sum + denda;
+              }, 0);
+
+              return (
+                <div style={{ marginTop: '12pt', border: '2px solid #000', padding: '8pt' }}>
+                  <table style={{ border: 'none' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ border: 'none', fontWeight: 'bold' }}>Total Lunas:</td>
+                        <td style={{ border: 'none', textAlign: 'right' }}>{formatCurrency(totalLunas)}</td>
+                        <td style={{ border: 'none', fontWeight: 'bold' }}>Total Tunggakan:</td>
+                        <td style={{ border: 'none', textAlign: 'right' }}>{formatCurrency(totalTunggakan)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ border: 'none', fontWeight: 'bold' }}>Total Denda:</td>
+                        <td style={{ border: 'none', textAlign: 'right' }}>{formatCurrency(totalDenda)}</td>
+                        <td style={{ border: 'none', fontWeight: 'bold' }}>Total Tagihan:</td>
+                        <td style={{ border: 'none', textAlign: 'right' }}>{formatCurrency(totalTunggakan + totalDenda)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Print-only content for detail mode */}
+      {printMode === 'detail' && selectedYearData && (
+        <div className="print-only hidden">
+          <div className="print-layout">
+            <div className="print-title">
+              <h1>SURAT PEMBERITAHUAN PAJAK TERHUTANG</h1>
+              <h2>PAJAK BUMI DAN BANGUNAN</h2>
+              <h2>TAHUN {selectedYearData.THN_PAJAK_SPPT}</h2>
+              <p style={{ margin: '6pt 0' }}>NOP: {formatNop(nop)}</p>
+              <p style={{ fontSize: '9pt', margin: '4pt 0' }}>
+                Dicetak pada: {new Date().toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            {objectInfo && (
+              <div className="print-info-grid">
+                <div className="print-info-row">
+                  <span className="print-info-label">Nama WP:</span>
+                  <span className="print-info-value">{objectInfo.nama_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Telp WP:</span>
+                  <span className="print-info-value">{objectInfo.telpon_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Alamat WP:</span>
+                  <span className="print-info-value">{objectInfo.alamat_wajib_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Alamat OP:</span>
+                  <span className="print-info-value">{objectInfo.alamat_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Kecamatan:</span>
+                  <span className="print-info-value">{objectInfo.kecamatan_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Kelurahan:</span>
+                  <span className="print-info-value">{objectInfo.kelurahan_objek_pajak || '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Luas Bumi:</span>
+                  <span className="print-info-value">{objectInfo.luas_bumi ? `${objectInfo.luas_bumi.toLocaleString()} m²` : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">NJOP Bumi:</span>
+                  <span className="print-info-value">{objectInfo.njop_bumi ? formatCurrency(objectInfo.njop_bumi) : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">Luas Bangunan:</span>
+                  <span className="print-info-value">{objectInfo.luas_bangunan ? `${objectInfo.luas_bangunan.toLocaleString()} m²` : '-'}</span>
+                </div>
+                <div className="print-info-row">
+                  <span className="print-info-label">NJOP Bangunan:</span>
+                  <span className="print-info-value">{objectInfo.njop_bangunan ? formatCurrency(objectInfo.njop_bangunan) : '-'}</span>
+                </div>
+              </div>
+            )}
+
+            <h3 style={{ marginTop: '12pt' }}>Detail SPPT Tahun {selectedYearData.THN_PAJAK_SPPT}</h3>
+            <table>
+              <tbody>
+                <tr>
+                  <td style={{ fontWeight: 'bold', width: '40%' }}>Tahun Pajak</td>
+                  <td style={{ width: '60%' }}>{selectedYearData.THN_PAJAK_SPPT}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Status Pembayaran</td>
+                  <td>{selectedYearData.STATUS_PEMBAYARAN_SPPT ? 'LUNAS' : 'BELUM LUNAS'}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>PBB Yang Harus Dibayar</td>
+                  <td>{formatCurrency(selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Denda</td>
+                  <td>{formatCurrency(
+                    selectedYearData.STATUS_PEMBAYARAN_SPPT ? 0 : calculateDenda(
+                      selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
+                      selectedYearData.TGL_JATUH_TEMPO_SPPT || null,
+                      selectedYearData.STATUS_PEMBAYARAN_SPPT === 1,
+                      objectInfo
+                    )
+                  )}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Total Tagihan</td>
+                  <td style={{ fontWeight: 'bold', fontSize: '11pt' }}>
+                    {formatCurrency(
+                      calculateTagihan(
+                        selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
+                        selectedYearData.STATUS_PEMBAYARAN_SPPT ? 0 : calculateDenda(
+                          selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
+                          selectedYearData.TGL_JATUH_TEMPO_SPPT || null,
+                          selectedYearData.STATUS_PEMBAYARAN_SPPT === 1,
+                          objectInfo
+                        )
+                      )
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Jatuh Tempo</td>
+                  <td>{formatDate(selectedYearData.TGL_JATUH_TEMPO_SPPT) || '-'}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Jumlah Dibayar</td>
+                  <td>{formatCurrency(selectedYearData.total_dibayar)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold' }}>Tanggal Pembayaran</td>
+                  <td>
+                    {selectedYearData.tanggal_pembayaran
+                      ? selectedYearData.tanggal_pembayaran.split(',').map(d => formatDate(d.trim())).join(', ')
+                      : '-'
+                    }
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ marginTop: '20pt', borderTop: '1px solid #000', paddingTop: '8pt', fontSize: '9pt', textAlign: 'justify' }}>
+              <p><strong>Catatan:</strong></p>
+              <p>1. SPPT ini berlaku untuk tahun pajak yang tertera di atas.</p>
+              <p>2. Pembayaran dilakukan paling lambat pada tanggal jatuh tempo.</p>
+              <p>3. Keterlambatan pembayaran akan dikenakan denda sesuai peraturan yang berlaku.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SidebarProvider
         style={
@@ -402,7 +724,7 @@ export default function Page() {
         <SidebarInset>
         <SiteHeader title="SPPT - Pilih Tahun Pajak" />
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-4 p-4 print-container">
+          <div className="@container/main flex flex-1 flex-col gap-4 p-4 screen-only">
             {/* Print Title - Only visible when printing */}
             <div className="hidden print:block mb-8 text-center">
               <h1 className="text-2xl font-bold mb-2">REKAPITULASI SURAT PEMBERITAHUAN PAJAK TERHUTANG</h1>
@@ -757,9 +1079,9 @@ export default function Page() {
                                       )}
                                     </TableCell>
                                     <TableCell>
-                                      <Button>
+                                      <Button onClick={() => handlePrintSppt(yearData.THN_PAJAK_SPPT)} className="print:hidden">
+                                        <Printer className="h-4 w-4" />
                                         Cetak SPPT
-                                        <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-1 transition-transform" />
                                       </Button>
                                     </TableCell>
                                   </TableRow>

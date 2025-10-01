@@ -219,8 +219,8 @@ export default function Page() {
   };
 
   // Calculate Denda (penalty) based on MySQL function logic
-  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, isPaid: boolean | null, objectInfo: any) => {
-    if (!pbbAmount || !dueDate || isPaid) return 0;
+  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, objectInfo: any) => {
+    if (!pbbAmount || !dueDate) return 0;
 
     const due = new Date(dueDate);
     const now = new Date();
@@ -234,8 +234,6 @@ export default function Page() {
     const selisihBulan = (currentYear * 100 + currentMonth) - (dueDateYear * 100 + dueDateMonth);
     const monthsDiff = Math.floor(selisihBulan / 100) * 12 + (selisihBulan % 100);
 
-    if (monthsDiff <= 0) return 0;
-
     // Determine max months based on region and year
     let bulanMax = 24; // default
     const kdPropinsi = objectInfo?.KD_PROPINSI || '';
@@ -246,17 +244,23 @@ export default function Page() {
       bulanMax = 15;
     }
 
-    // Determine penalty rate based on region and year
-    let dendaRate = 0.02; // default 2%
-    if (regionCode === '5102' && dueDateYear >= 2024) {
-      dendaRate = 0.01; // 1%
+    // Determine penalty rate based on DATEDIFF - only if past due date
+    let dendaRate = 0;
+    const daysDiff = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysDiff > 0) {
+      if (regionCode === '5102' && dueDateYear >= 2024) {
+        dendaRate = 0.01; // 1%
+      } else {
+        dendaRate = 0.02; // 2%
+      }
     }
 
     // Calculate effective months (capped at max)
-    const bulanDenda = Math.min(monthsDiff, bulanMax);
+    const bulanDenda = monthsDiff > bulanMax ? bulanMax : (monthsDiff > 0 ? monthsDiff : 0);
 
-    // Calculate denda
-    const calculatedDenda = dendaRate * bulanDenda * pbbAmount;
+    // Calculate denda: (denda * bulan_denda) * pbb
+    const calculatedDenda = (dendaRate * bulanDenda) * pbbAmount;
 
     // Return 0 if calculated denda is negative, otherwise return the calculated amount
     return calculatedDenda < 0 ? 0 : Math.floor(calculatedDenda);
@@ -510,10 +514,10 @@ export default function Page() {
                   .filter(y => !y.loading && !y.error)
                   .sort((a, b) => parseInt(b.THN_PAJAK_SPPT) - parseInt(a.THN_PAJAK_SPPT))
                   .map((yearData) => {
-                    const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
+                    const isPaid = Boolean(yearData.STATUS_PEMBAYARAN_SPPT);
                     const denda = isPaid
-                      ? yearData.total_denda
-                      : 696969;
+                      ? (yearData.total_denda || 0)
+                      : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT, yearData.TGL_JATUH_TEMPO_SPPT, objectInfo);
                     return (
                       <tr key={yearData.THN_PAJAK_SPPT}>
                         <td>{yearData.THN_PAJAK_SPPT}</td>
@@ -995,11 +999,17 @@ export default function Page() {
                                           <span className="text-red-500 text-sm">
                                             -
                                           </span>
-                                        ) : (
-                                          <span className={`font-medium ${(yearData.total_denda || 0) > 0 ? 'text-red-600' : ''}`}>
-                                            {formatCurrency(yearData.total_denda || 0)}
-                                          </span>
-                                        )}
+                                        ) : (() => {
+                                          const isPaid = Boolean(yearData.STATUS_PEMBAYARAN_SPPT);
+                                          const denda = isPaid
+                                            ? (yearData.total_denda || 0)
+                                            : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT, yearData.TGL_JATUH_TEMPO_SPPT, objectInfo);
+                                          return (
+                                            <span className={`font-medium ${denda > 0 ? 'text-red-600' : ''}`}>
+                                              {formatCurrency(denda)}
+                                            </span>
+                                          );
+                                        })()}
                                       </TableCell>
                                       <TableCell>
                                         {yearData.loading ? (

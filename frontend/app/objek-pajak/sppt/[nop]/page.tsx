@@ -517,7 +517,7 @@ export default function Page() {
                     const isPaid = Boolean(yearData.STATUS_PEMBAYARAN_SPPT);
                     const denda = isPaid
                       ? (yearData.total_denda || 0)
-                      : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT, yearData.TGL_JATUH_TEMPO_SPPT, objectInfo);
+                      : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT ?? null, yearData.TGL_JATUH_TEMPO_SPPT ?? null, objectInfo);
                     return (
                       <tr key={yearData.THN_PAJAK_SPPT}>
                         <td>{yearData.THN_PAJAK_SPPT}</td>
@@ -967,7 +967,7 @@ export default function Page() {
                                         ) : (
                                           (() => {
                                             const payment = getPaymentStatus(
-                                              yearData.STATUS_PEMBAYARAN_SPPT
+                                              Boolean(yearData.STATUS_PEMBAYARAN_SPPT)
                                             );
                                             return (
                                               <Badge variant={payment.variant}>
@@ -1003,7 +1003,7 @@ export default function Page() {
                                           const isPaid = Boolean(yearData.STATUS_PEMBAYARAN_SPPT);
                                           const denda = isPaid
                                             ? (yearData.total_denda || 0)
-                                            : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT, yearData.TGL_JATUH_TEMPO_SPPT, objectInfo);
+                                            : calculateDenda(yearData.PBB_YG_HARUS_DIBAYAR_SPPT ?? null, yearData.TGL_JATUH_TEMPO_SPPT ?? null, objectInfo);
                                           return (
                                             <span className={`font-medium ${denda > 0 ? 'text-red-600' : ''}`}>
                                               {formatCurrency(denda)}

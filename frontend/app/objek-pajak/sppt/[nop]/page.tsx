@@ -511,7 +511,9 @@ export default function Page() {
                   .sort((a, b) => parseInt(b.THN_PAJAK_SPPT) - parseInt(a.THN_PAJAK_SPPT))
                   .map((yearData) => {
                     const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
-                    const denda = yearData.total_denda || 0;
+                    const denda = isPaid
+                      ? yearData.total_denda
+                      : 696969;
                     return (
                       <tr key={yearData.THN_PAJAK_SPPT}>
                         <td>{yearData.THN_PAJAK_SPPT}</td>
@@ -698,439 +700,439 @@ export default function Page() {
       >
         <AppSidebar user={sidebarUser} variant="inset" />
         <SidebarInset>
-        <SiteHeader title="SPPT - Pilih Tahun Pajak" />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-4 p-4 screen-only">
-            {/* Print Title - Only visible when printing */}
-            <div className="hidden print:block mb-8 text-center">
-              <h1 className="text-2xl font-bold mb-2">REKAPITULASI SURAT PEMBERITAHUAN PAJAK TERHUTANG</h1>
-              <h2 className="text-xl font-semibold mb-2">PAJAK BUMI DAN BANGUNAN</h2>
-              <div className="text-lg font-semibold mb-4">
-                NOP: {formatNop(nop)}
-              </div>
-              <div className="text-sm mb-6 border-t border-b border-black py-2">
-                Dicetak pada: {new Date().toLocaleDateString('id-ID', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </div>
-            </div>
-
-            {/* Breadcrumb/Property Info */}
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm mb-2">
-                  <Building className="h-4 w-4 text-primary" />
-                  <span className="font-medium">Objek Pajak:</span>
+          <SiteHeader title="SPPT - Pilih Tahun Pajak" />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-4 p-4 screen-only">
+              {/* Print Title - Only visible when printing */}
+              <div className="hidden print:block mb-8 text-center">
+                <h1 className="text-2xl font-bold mb-2">REKAPITULASI SURAT PEMBERITAHUAN PAJAK TERHUTANG</h1>
+                <h2 className="text-xl font-semibold mb-2">PAJAK BUMI DAN BANGUNAN</h2>
+                <div className="text-lg font-semibold mb-4">
+                  NOP: {formatNop(nop)}
                 </div>
-                <div className="font-mono text-lg font-semibold text-primary">
-                  {formatNop(nop)}
+                <div className="text-sm mb-6 border-t border-b border-black py-2">
+                  Dicetak pada: {new Date().toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Comprehensive Object Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Informasi Objek dan Wajib Pajak
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {objectInfoLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[...Array(11)].map((_, i) => (
-                      <Skeleton key={i} className="h-16" />
-                    ))}
+              {/* Breadcrumb/Property Info */}
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent>
+                  <div className="flex items-center gap-2 text-sm mb-2">
+                    <Building className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Objek Pajak:</span>
                   </div>
-                ) : objectInfoError ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>
-                      Gagal memuat informasi objek pajak.
-                    </AlertDescription>
-                  </Alert>
-                ) : objectInfo ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Nomor Objek Pajak:</span>
-                      <span className="font-mono text-right w-3/5">{objectInfo.nomor_objek_pajak}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Nama Wajib Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.nama_wajib_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Telpon Wajib Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.telpon_wajib_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Alamat Wajib Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.alamat_wajib_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Alamat Objek Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.alamat_objek_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Kecamatan Objek Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.kecamatan_objek_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Kelurahan Objek Pajak:</span>
-                      <span className="text-right w-3/5">{objectInfo.kelurahan_objek_pajak || '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Luas Bumi:</span>
-                      <span className="text-right w-3/5">{objectInfo.luas_bumi ? `${objectInfo.luas_bumi.toLocaleString()} m²` : '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">NJOP Bumi:</span>
-                      <span className="text-right w-3/5">{objectInfo.njop_bumi ? formatCurrency(objectInfo.njop_bumi) : '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">Luas Bangunan:</span>
-                      <span className="text-right w-3/5">{objectInfo.luas_bangunan ? `${objectInfo.luas_bangunan.toLocaleString()} m²` : '-'}</span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-medium text-sm w-2/5">NJOP Bangunan:</span>
-                      <span className="text-right w-3/5">{objectInfo.njop_bangunan ? formatCurrency(objectInfo.njop_bangunan) : '-'}</span>
-                    </div>
+                  <div className="font-mono text-lg font-semibold text-primary">
+                    {formatNop(nop)}
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Year selection */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+              {/* Comprehensive Object Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Informasi Objek dan Wajib Pajak
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {objectInfoLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[...Array(11)].map((_, i) => (
+                        <Skeleton key={i} className="h-16" />
+                      ))}
+                    </div>
+                  ) : objectInfoError ? (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        Gagal memuat informasi objek pajak.
+                      </AlertDescription>
+                    </Alert>
+                  ) : objectInfo ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Nomor Objek Pajak:</span>
+                        <span className="font-mono text-right w-3/5">{objectInfo.nomor_objek_pajak}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Nama Wajib Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.nama_wajib_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Telpon Wajib Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.telpon_wajib_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Alamat Wajib Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.alamat_wajib_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Alamat Objek Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.alamat_objek_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Kecamatan Objek Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.kecamatan_objek_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Kelurahan Objek Pajak:</span>
+                        <span className="text-right w-3/5">{objectInfo.kelurahan_objek_pajak || '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Luas Bumi:</span>
+                        <span className="text-right w-3/5">{objectInfo.luas_bumi ? `${objectInfo.luas_bumi.toLocaleString()} m²` : '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">NJOP Bumi:</span>
+                        <span className="text-right w-3/5">{objectInfo.njop_bumi ? formatCurrency(objectInfo.njop_bumi) : '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">Luas Bangunan:</span>
+                        <span className="text-right w-3/5">{objectInfo.luas_bangunan ? `${objectInfo.luas_bangunan.toLocaleString()} m²` : '-'}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="font-medium text-sm w-2/5">NJOP Bangunan:</span>
+                        <span className="text-right w-3/5">{objectInfo.njop_bangunan ? formatCurrency(objectInfo.njop_bangunan) : '-'}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              {/* Year selection */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBackToObjects}
+                        className="flex items-center gap-2 print:hidden"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <div>
+                        <CardTitle className="text-xl">Pilih Tahun Pajak</CardTitle>
+                        <CardDescription>
+                          Pilih tahun pajak SPPT yang ingin Anda lihat untuk objek
+                          pajak dengan NOP{" "}
+                          <span className="font-mono font-medium text-primary">
+                            {formatNop(nop)}
+                          </span>
+                        </CardDescription>
+                      </div>
+                    </div>
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={handleBackToObjects}
+                      onClick={handlePrint}
                       className="flex items-center gap-2 print:hidden"
                     >
-                      <ArrowLeft className="h-4 w-4" />
+                      <Printer className="h-4 w-4" />
+                      Cetak
                     </Button>
-                    <div>
-                      <CardTitle className="text-xl">Pilih Tahun Pajak</CardTitle>
-                      <CardDescription>
-                        Pilih tahun pajak SPPT yang ingin Anda lihat untuk objek
-                        pajak dengan NOP{" "}
-                        <span className="font-mono font-medium text-primary">
-                          {formatNop(nop)}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {yearsLoading ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-4 w-4" />
+                        <span className="text-sm text-gray-600">
+                          Memuat data tahun pajak...
                         </span>
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={handlePrint}
-                    className="flex items-center gap-2 print:hidden"
-                  >
-                    <Printer className="h-4 w-4" />
-                    Cetak
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {yearsLoading ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-4 w-4" />
-                      <span className="text-sm text-gray-600">
-                        Memuat data tahun pajak...
-                      </span>
-                    </div>
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[100px]">Tahun</TableHead>
-                            <TableHead className="text-right">
-                              PBB Terhutang
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Denda
-                            </TableHead>
-                            <TableHead>Jatuh Tempo</TableHead>
-                            <TableHead className="text-right">
-                              Dibayar
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Tgl Bayar
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {[1, 2, 3].map((i) => (
-                            <TableRow key={i}>
-                              <TableCell>
-                                <Skeleton className="h-4 w-16" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-24 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-20 ml-auto" />
-                              </TableCell>
-                              <TableCell>
-                                <Skeleton className="h-4 w-24" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-24 ml-auto" />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Skeleton className="h-4 w-20 ml-auto" />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {yearSummaries.length > 0 ? (
-                      <div className="space-y-4">
-                        <p className="text-sm">
-                          Tersedia {yearSummaries.length} tahun pajak untuk
-                          objek ini. Klik baris untuk melihat detail:
-                        </p>
-
-                        <div className="border rounded-lg overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="h-14">
-                                <TableHead className="w-[100px]">
-                                  Tahun
-                                </TableHead>
-                                <TableHead className="text-right w-[80px]">
-                                  Status
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  PBB
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  Denda
-                                </TableHead>
-                                <TableHead>
-                                  Jatuh Tempo
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  Dibayar
-                                </TableHead>
-                                <TableHead className="text-right">
-                                  Tgl Bayar
-                                </TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {yearSummaries
-                                .sort(
-                                  (a, b) =>
-                                    parseInt(b.THN_PAJAK_SPPT) -
-                                    parseInt(a.THN_PAJAK_SPPT)
-                                )
-                                .map((yearData) => (
-                                  <TableRow
-                                    key={yearData.THN_PAJAK_SPPT}
-                                  >
-                                    <TableCell className="font-medium">
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-primary" />
-                                        {yearData.THN_PAJAK_SPPT}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-20 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        (() => {
-                                          const payment = getPaymentStatus(
-                                            yearData.STATUS_PEMBAYARAN_SPPT
-                                          );
-                                          return (
-                                            <Badge variant={payment.variant}>
-                                              {payment.text}
-                                            </Badge>
-                                          );
-                                        })()
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-24 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        <span className="font-semibold">
-                                          {formatCurrency(
-                                            yearData.PBB_YG_HARUS_DIBAYAR_SPPT
-                                          )}
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-20 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        <span className={`font-medium ${(yearData.total_denda || 0) > 0 ? 'text-red-600' : ''}`}>
-                                          {formatCurrency(yearData.total_denda || 0)}
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-24" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        formatDate(
-                                          yearData.TGL_JATUH_TEMPO_SPPT
-                                        ) || "-"
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-24 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : (
-                                        <span className="font-semibold text-green-600">
-                                          {formatCurrency(yearData.total_dibayar)}
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {yearData.loading ? (
-                                        <Skeleton className="h-4 w-24 ml-auto" />
-                                      ) : yearData.error ? (
-                                        <span className="text-red-500 text-sm">
-                                          -
-                                        </span>
-                                      ) : yearData.tanggal_pembayaran ? (
-                                        <span className="text-sm">
-                                          {yearData.tanggal_pembayaran.split(',').map((date, idx) => (
-                                            <div key={idx}>{formatDate(date.trim())}</div>
-                                          ))}
-                                        </span>
-                                      ) : (
-                                        <span className="text-gray-400">-</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button onClick={() => handlePrintSppt(yearData.THN_PAJAK_SPPT)} className="print:hidden">
-                                        <Printer className="h-4 w-4" />
-                                        Cetak SPPT
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-
-                        {/* Summary totals: Lunas vs Tunggakan with Denda and Tagihan */}
-                        {(() => {
-                          const totalLunas = yearSummaries.reduce((sum, y) => {
-                            if (y.loading || y.error) return sum;
-                            return y.STATUS_PEMBAYARAN_SPPT
-                              ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0)
-                              : sum;
-                          }, 0);
-
-                          const totalTunggakan = yearSummaries.reduce((sum, y) => {
-                            if (y.loading || y.error) return sum;
-                            return !y.STATUS_PEMBAYARAN_SPPT
-                              ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0)
-                              : sum;
-                          }, 0);
-
-                          const totalDenda = yearSummaries.reduce((sum, y) => {
-                            if (y.loading || y.error) return sum;
-                            return sum + (y.total_denda || 0);
-                          }, 0);
-
-                          const totalTagihan = yearSummaries.reduce((sum, y) => {
-                            if (y.loading || y.error) return sum;
-                            const denda = y.total_denda || 0;
-                            const tagihan = calculateTagihan(y.PBB_YG_HARUS_DIBAYAR_SPPT, denda);
-                            return sum + tagihan;
-                          }, 0);
-
-                          return (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-primary/10 border-primary/20 rounded-lg summary-section">
-                              <div className="text-center">
-                                <span className="text-sm font-medium block">
-                                  Total Lunas
-                                </span>
-                                <div className="text-lg font-semibold text-green-600">
-                                  {formatCurrency(totalLunas)}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-sm font-medium block">
-                                  Total Tunggakan
-                                </span>
-                                <div className="text-lg font-semibold text-red-600">
-                                  {formatCurrency(totalTunggakan)}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-sm font-medium block">
-                                  Total Denda
-                                </span>
-                                <div className="text-lg font-semibold text-orange-600">
-                                  {formatCurrency(totalDenda)}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
                       </div>
-                    ) : (
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Tidak Ada Data SPPT</AlertTitle>
-                        <AlertDescription>
-                          Tidak ada tahun pajak SPPT ditemukan untuk objek pajak
-                          ini. Data SPPT mungkin belum tersedia atau sedang
-                          dalam proses.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[100px]">Tahun</TableHead>
+                              <TableHead className="text-right">
+                                PBB Terhutang
+                              </TableHead>
+                              <TableHead className="text-right">
+                                Denda
+                              </TableHead>
+                              <TableHead>Jatuh Tempo</TableHead>
+                              <TableHead className="text-right">
+                                Dibayar
+                              </TableHead>
+                              <TableHead className="text-right">
+                                Tgl Bayar
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[1, 2, 3].map((i) => (
+                              <TableRow key={i}>
+                                <TableCell>
+                                  <Skeleton className="h-4 w-16" />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Skeleton className="h-4 w-24 ml-auto" />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Skeleton className="h-4 w-20 ml-auto" />
+                                </TableCell>
+                                <TableCell>
+                                  <Skeleton className="h-4 w-24" />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Skeleton className="h-4 w-24 ml-auto" />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Skeleton className="h-4 w-20 ml-auto" />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {yearSummaries.length > 0 ? (
+                        <div className="space-y-4">
+                          <p className="text-sm">
+                            Tersedia {yearSummaries.length} tahun pajak untuk
+                            objek ini. Klik baris untuk melihat detail:
+                          </p>
+
+                          <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="h-14">
+                                  <TableHead className="w-[100px]">
+                                    Tahun
+                                  </TableHead>
+                                  <TableHead className="text-right w-[80px]">
+                                    Status
+                                  </TableHead>
+                                  <TableHead className="text-right">
+                                    PBB
+                                  </TableHead>
+                                  <TableHead className="text-right">
+                                    Denda
+                                  </TableHead>
+                                  <TableHead>
+                                    Jatuh Tempo
+                                  </TableHead>
+                                  <TableHead className="text-right">
+                                    Dibayar
+                                  </TableHead>
+                                  <TableHead className="text-right">
+                                    Tgl Bayar
+                                  </TableHead>
+                                  <TableHead className="w-[50px]"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {yearSummaries
+                                  .sort(
+                                    (a, b) =>
+                                      parseInt(b.THN_PAJAK_SPPT) -
+                                      parseInt(a.THN_PAJAK_SPPT)
+                                  )
+                                  .map((yearData) => (
+                                    <TableRow
+                                      key={yearData.THN_PAJAK_SPPT}
+                                    >
+                                      <TableCell className="font-medium">
+                                        <div className="flex items-center gap-2">
+                                          <Calendar className="h-4 w-4 text-primary" />
+                                          {yearData.THN_PAJAK_SPPT}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-20 ml-auto" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : (
+                                          (() => {
+                                            const payment = getPaymentStatus(
+                                              yearData.STATUS_PEMBAYARAN_SPPT
+                                            );
+                                            return (
+                                              <Badge variant={payment.variant}>
+                                                {payment.text}
+                                              </Badge>
+                                            );
+                                          })()
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-24 ml-auto" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : (
+                                          <span className="font-semibold">
+                                            {formatCurrency(
+                                              yearData.PBB_YG_HARUS_DIBAYAR_SPPT
+                                            )}
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-20 ml-auto" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : (
+                                          <span className={`font-medium ${(yearData.total_denda || 0) > 0 ? 'text-red-600' : ''}`}>
+                                            {formatCurrency(yearData.total_denda || 0)}
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-24" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : (
+                                          formatDate(
+                                            yearData.TGL_JATUH_TEMPO_SPPT
+                                          ) || "-"
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-24 ml-auto" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : (
+                                          <span className="font-semibold text-green-600">
+                                            {formatCurrency(yearData.total_dibayar)}
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {yearData.loading ? (
+                                          <Skeleton className="h-4 w-24 ml-auto" />
+                                        ) : yearData.error ? (
+                                          <span className="text-red-500 text-sm">
+                                            -
+                                          </span>
+                                        ) : yearData.tanggal_pembayaran ? (
+                                          <span className="text-sm">
+                                            {yearData.tanggal_pembayaran.split(',').map((date, idx) => (
+                                              <div key={idx}>{formatDate(date.trim())}</div>
+                                            ))}
+                                          </span>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button onClick={() => handlePrintSppt(yearData.THN_PAJAK_SPPT)} className="print:hidden">
+                                          <Printer className="h-4 w-4" />
+                                          Cetak SPPT
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          {/* Summary totals: Lunas vs Tunggakan with Denda and Tagihan */}
+                          {(() => {
+                            const totalLunas = yearSummaries.reduce((sum, y) => {
+                              if (y.loading || y.error) return sum;
+                              return y.STATUS_PEMBAYARAN_SPPT
+                                ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0)
+                                : sum;
+                            }, 0);
+
+                            const totalTunggakan = yearSummaries.reduce((sum, y) => {
+                              if (y.loading || y.error) return sum;
+                              return !y.STATUS_PEMBAYARAN_SPPT
+                                ? sum + (y.PBB_YG_HARUS_DIBAYAR_SPPT || 0)
+                                : sum;
+                            }, 0);
+
+                            const totalDenda = yearSummaries.reduce((sum, y) => {
+                              if (y.loading || y.error) return sum;
+                              return sum + (y.total_denda || 0);
+                            }, 0);
+
+                            const totalTagihan = yearSummaries.reduce((sum, y) => {
+                              if (y.loading || y.error) return sum;
+                              const denda = y.total_denda || 0;
+                              const tagihan = calculateTagihan(y.PBB_YG_HARUS_DIBAYAR_SPPT, denda);
+                              return sum + tagihan;
+                            }, 0);
+
+                            return (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-primary/10 border-primary/20 rounded-lg summary-section">
+                                <div className="text-center">
+                                  <span className="text-sm font-medium block">
+                                    Total Lunas
+                                  </span>
+                                  <div className="text-lg font-semibold text-green-600">
+                                    {formatCurrency(totalLunas)}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <span className="text-sm font-medium block">
+                                    Total Tunggakan
+                                  </span>
+                                  <div className="text-lg font-semibold text-red-600">
+                                    {formatCurrency(totalTunggakan)}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <span className="text-sm font-medium block">
+                                    Total Denda
+                                  </span>
+                                  <div className="text-lg font-semibold text-orange-600">
+                                    {formatCurrency(totalDenda)}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Tidak Ada Data SPPT</AlertTitle>
+                          <AlertDescription>
+                            Tidak ada tahun pajak SPPT ditemukan untuk objek pajak
+                            ini. Data SPPT mungkin belum tersedia atau sedang
+                            dalam proses.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
     </>
   );
 }

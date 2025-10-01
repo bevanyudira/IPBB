@@ -511,12 +511,7 @@ export default function Page() {
                   .sort((a, b) => parseInt(b.THN_PAJAK_SPPT) - parseInt(a.THN_PAJAK_SPPT))
                   .map((yearData) => {
                     const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
-                    const denda = isPaid ? 0 : calculateDenda(
-                      yearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
-                      yearData.TGL_JATUH_TEMPO_SPPT || null,
-                      isPaid,
-                      objectInfo
-                    );
+                    const denda = yearData.total_denda || 0;
                     return (
                       <tr key={yearData.THN_PAJAK_SPPT}>
                         <td>{yearData.THN_PAJAK_SPPT}</td>
@@ -546,14 +541,7 @@ export default function Page() {
 
               const totalDenda = yearSummaries.reduce((sum, y) => {
                 if (y.loading || y.error) return sum;
-                const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
-                const denda = isPaid ? 0 : calculateDenda(
-                  y.PBB_YG_HARUS_DIBAYAR_SPPT || null,
-                  y.TGL_JATUH_TEMPO_SPPT || null,
-                  isPaid,
-                  objectInfo
-                );
-                return sum + denda;
+                return sum + (y.total_denda || 0);
               }, 0);
 
               return (
@@ -657,14 +645,7 @@ export default function Page() {
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 'bold' }}>Denda</td>
-                  <td>{formatCurrency(
-                    selectedYearData.STATUS_PEMBAYARAN_SPPT ? 0 : calculateDenda(
-                      selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
-                      selectedYearData.TGL_JATUH_TEMPO_SPPT || null,
-                      selectedYearData.STATUS_PEMBAYARAN_SPPT === 1,
-                      objectInfo
-                    )
-                  )}</td>
+                  <td>{formatCurrency(selectedYearData.total_denda || 0)}</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 'bold' }}>Total Tagihan</td>
@@ -672,12 +653,7 @@ export default function Page() {
                     {formatCurrency(
                       calculateTagihan(
                         selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
-                        selectedYearData.STATUS_PEMBAYARAN_SPPT ? 0 : calculateDenda(
-                          selectedYearData.PBB_YG_HARUS_DIBAYAR_SPPT || null,
-                          selectedYearData.TGL_JATUH_TEMPO_SPPT || null,
-                          selectedYearData.STATUS_PEMBAYARAN_SPPT === 1,
-                          objectInfo
-                        )
+                        selectedYearData.total_denda || 0
                       )
                     )}
                   </td>
@@ -1018,21 +994,9 @@ export default function Page() {
                                           -
                                         </span>
                                       ) : (
-                                        (() => {
-                                          // Only show denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
-                                          const isPaid = yearData.STATUS_PEMBAYARAN_SPPT === 1;
-                                          const denda = isPaid ? 0 : calculateDenda(
-                                            yearData.PBB_YG_HARUS_DIBAYAR_SPPT,
-                                            yearData.TGL_JATUH_TEMPO_SPPT,
-                                            isPaid,
-                                            objectInfo
-                                          );
-                                          return (
-                                            <span className={`font-medium ${denda > 0 ? 'text-red-600' : ''}`}>
-                                              {formatCurrency(denda)}
-                                            </span>
-                                          );
-                                        })()
+                                        <span className={`font-medium ${(yearData.total_denda || 0) > 0 ? 'text-red-600' : ''}`}>
+                                          {formatCurrency(yearData.total_denda || 0)}
+                                        </span>
                                       )}
                                     </TableCell>
                                     <TableCell>
@@ -1108,27 +1072,12 @@ export default function Page() {
 
                           const totalDenda = yearSummaries.reduce((sum, y) => {
                             if (y.loading || y.error) return sum;
-                            // Only calculate denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
-                            const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
-                            const denda = isPaid ? 0 : calculateDenda(
-                              y.PBB_YG_HARUS_DIBAYAR_SPPT,
-                              y.TGL_JATUH_TEMPO_SPPT,
-                              isPaid,
-                              objectInfo
-                            );
-                            return sum + denda;
+                            return sum + (y.total_denda || 0);
                           }, 0);
 
                           const totalTagihan = yearSummaries.reduce((sum, y) => {
                             if (y.loading || y.error) return sum;
-                            // Only calculate denda if STATUS_PEMBAYARAN_SPPT is not 1 (unpaid)
-                            const isPaid = y.STATUS_PEMBAYARAN_SPPT === 1;
-                            const denda = isPaid ? 0 : calculateDenda(
-                              y.PBB_YG_HARUS_DIBAYAR_SPPT,
-                              y.TGL_JATUH_TEMPO_SPPT,
-                              isPaid,
-                              objectInfo
-                            );
+                            const denda = y.total_denda || 0;
                             const tagihan = calculateTagihan(y.PBB_YG_HARUS_DIBAYAR_SPPT, denda);
                             return sum + tagihan;
                           }, 0);

@@ -114,7 +114,8 @@ async def verifikasi(
     if exists:
         spop, subjek_pajak = spop_and_subjek
 
-        # Update email_wp in dat_subjek_pajak table for the found SUBJEK_PAJAK_ID
+        # Allow claiming/reclaiming verification regardless of existing EMAIL_WP value
+        # Update email_wp and telp_wp in dat_subjek_pajak table for the found SUBJEK_PAJAK_ID
         await session.exec(
             update(DatSubjekPajak)
             .where(DatSubjekPajak.SUBJEK_PAJAK_ID == subjek_pajak.SUBJEK_PAJAK_ID)

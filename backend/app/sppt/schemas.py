@@ -157,6 +157,8 @@ class SpptPaymentResponse(SQLModel):
 class ObjectInfoResponse(SQLModel):
     # Basic object identification
     nomor_objek_pajak: str
+    KD_PROPINSI: Optional[str] = None
+    KD_DATI2: Optional[str] = None
 
     # Taxpayer information
     nama_wajib_pajak: Optional[str] = None

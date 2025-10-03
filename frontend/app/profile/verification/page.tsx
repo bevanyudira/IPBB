@@ -22,6 +22,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { useOpVerifikasi } from "@/services/api/endpoints/op/op"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckCircleIcon, AlertTriangle } from "lucide-react"
+import { mutate } from "swr"
 
 const formSchema = z.object({
   nop: z.string().length(18, "NOP harus 18 digit"),
@@ -43,7 +44,7 @@ export default function VerificationPage() {
     defaultValues: {
       nop: "",
       nm_wp: "",
-      telp_wp: undefined,
+      telp_wp: "" as any,
     },
   })
 
@@ -53,7 +54,8 @@ export default function VerificationPage() {
       return () => clearTimeout(timer)
     }
     if (success && countdown === 0) {
-      router.push("/objek-pajak/sppt")
+      // Use window.location.href for a full page reload to ensure fresh cache
+      window.location.href = "/profile"
     }
   }, [success, countdown, router])
 
@@ -93,13 +95,26 @@ export default function VerificationPage() {
       if (result?.exists === true) {
         setSuccess(true)
         setErrorMessage(null)
+
+        // Force refresh user data cache to get updated is_verified status
+        // This ensures the redirect logic sees the updated user data
+        await mutate("/auth/me")
+        await mutate("/profile/me")
       } else {
         throw new Error("Data tidak ditemukan")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Verification failed:", error)
       setSuccess(false)
-      setErrorMessage("🚨 Data yang Anda masukkan tidak dapat diverifikasi. Pastikan NOP dan Nama sesuai dengan data pada SPPT Anda.")
+
+      // Show specific error message based on error type
+      if (error?.response?.status === 401) {
+        setErrorMessage("🔒 Sesi Anda telah berakhir. Silakan login kembali.")
+      } else if (error?.response?.status === 404 || error?.message === "Data tidak ditemukan") {
+        setErrorMessage("🚨 Data yang Anda masukkan tidak dapat diverifikasi. Pastikan NOP dan Nama sesuai dengan data pada SPPT Anda.")
+      } else {
+        setErrorMessage(`❌ Terjadi kesalahan: ${error?.response?.data?.detail || error?.message || "Unknown error"}`)
+      }
     }
   }
 

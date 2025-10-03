@@ -12,7 +12,7 @@ from .schemas import DatSubjekPajakResponse
 router = APIRouter(tags=["profile"])
 
 
-@router.get("/me", response_model=DatSubjekPajakResponse)
+@router.get("/me")
 async def get_my_profile(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(service.get_current_user),
@@ -26,13 +26,20 @@ async def get_my_profile(
     result = await session.exec(query)
     profile = result.first()
 
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile data not found for this user",
-        )
-
-    return profile
+    # Return user data with optional taxpayer data
+    return {
+        "user": {
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "nama": current_user.nama,
+            "telepon": current_user.telepon,
+            "alamat": current_user.alamat,
+            "is_active": current_user.is_active,
+            "is_verified": current_user.is_verified,
+            "is_admin": current_user.is_admin,
+        },
+        "taxpayer": profile.model_dump() if profile else None,
+    }
 
 
 @router.get("/toggle-admin")

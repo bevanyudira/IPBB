@@ -23,7 +23,7 @@ async def register(register_data: RegisterRequest, session: AsyncSession = Depen
     # Validate password
     errors = await UserService.validate_password(register_data.password, register_data.email)
     if errors:
-        raise HTTPException(status_code=400, detail={"password": errors})
+        raise HTTPException(status_code=400, detail="; ".join(errors))
 
     # Check if user exists
     existing_user = await UserService.get_user_by_email(session=session, email=register_data.email)
@@ -31,15 +31,20 @@ async def register(register_data: RegisterRequest, session: AsyncSession = Depen
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Create user
-    user = User(
-        email=register_data.email,
-        password=security.hash_password(register_data.password),
-        is_active=True
-    )
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-    return user
+    try:
+        user = User(
+            email=register_data.email,
+            password=security.hash_password(register_data.password),
+            is_active=True,  # Active by default
+            is_verified=False  # Must verify NOP to access pages
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -47,8 +52,9 @@ async def login(session: SessionDep, login_data: Annotated[LoginRequest, Depends
     user = await UserService.authenticate(session=session, email=login_data.username, password=login_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
+    # Reject inactive users (is_active=0 means account is disabled)
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=403, detail="Account has been deactivated")
     return TokenResponse(
         access_token=security.create_token(subject=str(user.id), token_type="access"),
         refresh_token=security.create_token(subject=str(user.id), token_type="refresh"),

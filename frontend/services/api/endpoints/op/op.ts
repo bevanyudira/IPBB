@@ -23,6 +23,7 @@ import type {
   ObjectInfoResponse,
   OpGetAllSpopParams,
   SpopPaginatedResponse,
+  SpptPaymentResponse,
   SpptResponse,
   SpptYearsResponse,
   VerifikasiRequest
@@ -207,6 +208,87 @@ export const useOpGetSpptYears = <TError = ErrorType<HTTPValidationError>>(
   }
 }
 /**
+ * Get payment information for a specific SPPT. Returns grouped payment data with totals.
+ * @summary Get Sppt Payment Detail V2
+ */
+export const opGetSpptPaymentDetailV2 = (
+    year: string,
+    nop: string,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<SpptPaymentResponse>(
+    {url: `/op/sppt/${year}/${nop}/payment`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getOpGetSpptPaymentDetailV2Key = (year: string,
+    nop: string,) => [`/op/sppt/${year}/${nop}/payment`] as const;
+
+export type OpGetSpptPaymentDetailV2QueryResult = NonNullable<Awaited<ReturnType<typeof opGetSpptPaymentDetailV2>>>
+export type OpGetSpptPaymentDetailV2QueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Sppt Payment Detail V2
+ */
+export const useOpGetSpptPaymentDetailV2 = <TError = ErrorType<HTTPValidationError>>(
+  year: string,
+    nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetSpptPaymentDetailV2>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false && !!(year && nop)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpptPaymentDetailV2Key(year,nop) : null);
+  const swrFn = () => opGetSpptPaymentDetailV2(year,nop, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Get comprehensive object information including taxpayer details, location, and property values.
+ * @summary Get Object Info
+ */
+export const opGetObjectInfo = (
+    nop: string,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<ObjectInfoResponse>(
+    {url: `/op/sppt/${nop}/info`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getOpGetObjectInfoKey = (nop: string,) => [`/op/sppt/${nop}/info`] as const;
+
+export type OpGetObjectInfoQueryResult = NonNullable<Awaited<ReturnType<typeof opGetObjectInfo>>>
+export type OpGetObjectInfoQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Object Info
+ */
+export const useOpGetObjectInfo = <TError = ErrorType<HTTPValidationError>>(
+  nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetObjectInfo>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false && !!(nop)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetObjectInfoKey(nop) : null);
+  const swrFn = () => opGetObjectInfo(nop, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
  * Get detailed SPPT data for a specific property (object) and year. Use after selecting object and year. NOP is a single string.
  * @summary Get Sppt Detail
  */
@@ -280,44 +362,6 @@ export const useOpGetSpptBatchByNop = <TError = ErrorType<HTTPValidationError>>(
   const isEnabled = swrOptions?.enabled !== false && !!(nop)
   const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpptBatchByNopKey(nop) : null);
   const swrFn = () => opGetSpptBatchByNop(nop, requestOptions)
-
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
-
-  return {
-    swrKey,
-    ...query
-  }
-}
-
-/**
- * Get comprehensive object information including taxpayer details, location, and property values.
- * @summary Get Object Info
- */
-export const opGetObjectInfo = (
-    nop: string,
- options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<ObjectInfoResponse>(
-    {url: `/op/sppt/${nop}/info`, method: 'GET'
-    },
-    options);
-  }
-
-export const getOpGetObjectInfoKey = (nop: string,) => [`/op/sppt/${nop}/info`] as const;
-
-export type OpGetObjectInfoQueryResult = NonNullable<Awaited<ReturnType<typeof opGetObjectInfo>>>
-export type OpGetObjectInfoQueryError = ErrorType<HTTPValidationError>
-
-/**
- * @summary Get Object Info
- */
-export const useOpGetObjectInfo = <TError = ErrorType<HTTPValidationError>>(
-  nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetObjectInfo>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
-) => {
-  const {swr: swrOptions, request: requestOptions} = options ?? {}
-
-  const isEnabled = swrOptions?.enabled !== false && !!(nop)
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetObjectInfoKey(nop) : null);
-  const swrFn = () => opGetObjectInfo(nop, requestOptions)
 
   const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
 

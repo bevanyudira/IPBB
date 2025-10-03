@@ -83,7 +83,9 @@ export const dashboardGetDashboardFiltersResponse = zod.object({
  */
 export const dashboardGetSpptReportFiltersResponse = zod.object({
   "available_years": zod.array(zod.string()),
-  "kecamatan_list": zod.array(zod.record(zod.string(), zod.any())),
+  "kecamatan_list": zod.array(zod.object({
+
+})),
   "max_year": zod.string().or(zod.null()).optional()
 })
 

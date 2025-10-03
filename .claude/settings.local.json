@@ -36,7 +36,10 @@
       "Bash(tasklist:*)",
       "Bash(cmd //c:*)",
       "Bash(cmd /c:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build)",
+      "Bash(uv run:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzYmFkZWJhMC0wN2ViLTRhMjgtOTIwNi00MjRiZmFhNjdiYjMiLCJqdGkiOiI4ZjNjMDhlZS0yNWExLTQwNTItOThlNS1lMDgyOGJhYzdiOTkiLCJpYXQiOjE3NTk0NjU4MDUsImV4cCI6MTc1OTU1NTgwNSwidG9rZW5fdHlwZSI6ImFjY2VzcyIsImlzcyI6ImFwcCIsImF1ZCI6ImFwcC1hcGkifQ.Q8WhIZNIW0soHzile2LFBkVWQEVdxextL0Q33uRodbs\")"
     ],
     "deny": [],
     "ask": [],

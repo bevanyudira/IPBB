@@ -25,7 +25,7 @@ export const authRegisterBody = zod.object({
 
 export const authRegisterResponseEmailMax = 255;
 export const authRegisterResponseNamaMaxOne = 255;
-export const authRegisterResponseTeleponDefault = "";export const authRegisterResponseAlamatDefault = "";export const authRegisterResponseIsActiveDefault = false;export const authRegisterResponseIsVerifiedDefault = false;export const authRegisterResponseIsAdminDefault = false;
+export const authRegisterResponseTeleponDefault = "";export const authRegisterResponseAlamatDefault = "";export const authRegisterResponseIsActiveDefault = true;export const authRegisterResponseIsVerifiedDefault = false;export const authRegisterResponseIsAdminDefault = false;
 
 export const authRegisterResponse = zod.object({
   "id": zod.string().uuid().optional(),
@@ -33,7 +33,7 @@ export const authRegisterResponse = zod.object({
   "nama": zod.string().max(authRegisterResponseNamaMaxOne).or(zod.null()).optional(),
   "telepon": zod.string().optional(),
   "alamat": zod.string().optional(),
-  "is_active": zod.boolean().optional(),
+  "is_active": zod.boolean().default(authRegisterResponseIsActiveDefault),
   "is_verified": zod.boolean().optional(),
   "is_admin": zod.boolean().optional()
 })
@@ -61,7 +61,7 @@ export const authGoogleCallbackResponse = zod.any()
  */
 export const authMeResponseEmailMax = 255;
 export const authMeResponseNamaMaxOne = 255;
-export const authMeResponseTeleponDefault = "";export const authMeResponseAlamatDefault = "";export const authMeResponseIsActiveDefault = false;export const authMeResponseIsVerifiedDefault = false;export const authMeResponseIsAdminDefault = false;
+export const authMeResponseTeleponDefault = "";export const authMeResponseAlamatDefault = "";export const authMeResponseIsActiveDefault = true;export const authMeResponseIsVerifiedDefault = false;export const authMeResponseIsAdminDefault = false;
 
 export const authMeResponse = zod.object({
   "id": zod.string().uuid().optional(),
@@ -69,7 +69,7 @@ export const authMeResponse = zod.object({
   "nama": zod.string().max(authMeResponseNamaMaxOne).or(zod.null()).optional(),
   "telepon": zod.string().optional(),
   "alamat": zod.string().optional(),
-  "is_active": zod.boolean().optional(),
+  "is_active": zod.boolean().default(authMeResponseIsActiveDefault),
   "is_verified": zod.boolean().optional(),
   "is_admin": zod.boolean().optional()
 })

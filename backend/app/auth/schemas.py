@@ -16,13 +16,6 @@ class RegisterRequest(SQLModel):
     def check_passwords_match(self):
         if self.password != self.password_confirm:
             raise ValueError("Passwords tidak cocok.")
-        errors = []
-        if len(self.password) < 8:
-            errors.append("minimal 8 karakter")
-        if not any(char.isdigit() for char in self.password):
-            errors.append("mengandung minimal 1 angka")
-        if errors:
-            raise ValueError(f"Password harus {', dan '.join(errors)}.")
         return self
 
 

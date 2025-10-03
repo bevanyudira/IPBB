@@ -26,20 +26,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  useOpGetSpptYears,
   useOpGetObjectInfo,
-  opGetSpptDetail,
 } from "@/services/api/endpoints/op/op";
 import { clientFetcher } from "@/lib/orval/mutator";
-import type { SpptYearResponse } from "@/services/api/models/spptYearResponse";
+import type { ObjectInfoResponse } from "@/services/api/models/objectInfoResponse";
 import {
-  MapPin,
   Building,
   Calendar,
   User,
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
   Printer,
 } from "lucide-react";
 import {
@@ -67,22 +63,15 @@ interface YearSummaryData {
   error?: boolean;
 }
 
-// Interface for payment data
-interface PaymentData {
-  total_dibayar?: number;
-  total_denda?: number;
-  tanggal_pembayaran?: string;
-}
-
-// Manual API function for payment data
-async function getPaymentDetail(year: string, nop: string): Promise<PaymentData | null> {
+// Manual API function for complete SPPT data with payments (optimized single query)
+async function getCompleteSpptData(nop: string): Promise<YearSummaryData[] | null> {
   try {
     return await clientFetcher({
-      url: `/op/sppt/${year}/${nop}/payment`,
+      url: `/op/sppt/batch/${nop}/complete`,
       method: 'GET'
     });
   } catch (error) {
-    console.error('Error fetching payment data:', error);
+    console.error('Error fetching complete SPPT data:', error);
     return null;
   }
 }
@@ -94,12 +83,11 @@ export default function Page() {
   const nop = params.nop as string;
 
   const [yearSummaries, setYearSummaries] = useState<YearSummaryData[]>([]);
-  const [yearsLoading, setYearsLoading] = useState(false);
+  const [yearsLoading, setYearsLoading] = useState(true);
   const [printMode, setPrintMode] = useState<'summary' | 'detail' | null>(null);
-  const [selectedYearData, setSelectedYearData] = useState<YearSummaryData | null>(null);
-
-  // Fetch available years for selected NOP
-  const { trigger: fetchYears } = useOpGetSpptYears();
+  const [selectedYearData, setSelectedYearData] = useState<YearSummaryData | null>(
+    null
+  );
 
   // Fetch comprehensive object info
   const { data: objectInfo, isLoading: objectInfoLoading, error: objectInfoError } = useOpGetObjectInfo(nop, {
@@ -111,84 +99,31 @@ export default function Page() {
     }
   });
 
-  // Load years first, then batch load details efficiently
+  // Load complete SPPT data with payments in ONE optimized query
   useEffect(() => {
-    const loadYearsData = async () => {
-      if (!nop) return;
-
+    const loadCompleteData = async () => {
       setYearsLoading(true);
-      try {
-        // Get available years first
-        const res = await fetchYears({ nop });
-        const availableYears = res.available_years || [];
 
-        // Set basic year data immediately - shows UI fast
-        const basicYearSummaries: YearSummaryData[] = availableYears.map(
-          (year) => ({
-            ...year,
-            loading: true,
-            error: false,
-          })
-        );
-        setYearSummaries(basicYearSummaries);
-        setYearsLoading(false);
+      // Fetch ALL data (SPPT + payments) in a single optimized query
+      const completeData = await getCompleteSpptData(nop);
 
-        // Load details in parallel batches (5 at a time to avoid overwhelming)
-        const batchSize = 5;
-        for (let i = 0; i < availableYears.length; i += batchSize) {
-          const batch = availableYears.slice(i, i + batchSize);
-
-          // Process batch in parallel
-          await Promise.allSettled(
-            batch.map(async (year, batchIndex) => {
-              const actualIndex = i + batchIndex;
-              try {
-                const data = await opGetSpptDetail(year.THN_PAJAK_SPPT, nop);
-                const paymentData = await getPaymentDetail(year.THN_PAJAK_SPPT, nop);
-
-                setYearSummaries(prev =>
-                  prev.map((item, idx) =>
-                    idx === actualIndex ? {
-                      ...item,
-                      NM_WP_SPPT: data.NM_WP_SPPT,
-                      TGL_JATUH_TEMPO_SPPT: data.TGL_JATUH_TEMPO_SPPT,
-                      LUAS_BUMI_SPPT: data.LUAS_BUMI_SPPT,
-                      LUAS_BNG_SPPT: data.LUAS_BNG_SPPT,
-                      NJOP_BUMI_SPPT: data.NJOP_BUMI_SPPT,
-                      NJOP_BNG_SPPT: data.NJOP_BNG_SPPT,
-                      PBB_YG_HARUS_DIBAYAR_SPPT: data.PBB_YG_HARUS_DIBAYAR_SPPT,
-                      STATUS_PEMBAYARAN_SPPT: data.STATUS_PEMBAYARAN_SPPT,
-                      total_dibayar: paymentData?.total_dibayar || 0,
-                      total_denda: paymentData?.total_denda || 0,
-                      tanggal_pembayaran: paymentData?.tanggal_pembayaran || null,
-                      loading: false,
-                      error: false,
-                    } : item
-                  )
-                );
-              } catch (error) {
-                setYearSummaries(prev =>
-                  prev.map((item, idx) =>
-                    idx === actualIndex ? { ...item, loading: false, error: true } : item
-                  )
-                );
-              }
-            })
-          );
-        }
-      } catch (e) {
-        setYearSummaries([]);
-        setYearsLoading(false);
+      if (completeData) {
+        // Data already includes payment information from the backend
+        const formattedData: YearSummaryData[] = completeData.map((spptData) => ({
+          ...spptData,
+          count: 1,
+          loading: false,
+          error: false,
+        }));
+        setYearSummaries(formattedData);
       }
+
+      setYearsLoading(false);
     };
 
-    loadYearsData();
-  }, [nop, fetchYears]);
+    loadCompleteData();
+  }, [nop]);
 
-  // Handle year selection - navigate directly to print page
-  const handleSelectYear = (year: string) => {
-    router.push(`/sppt-print?year=${year}&nop=${nop}`);
-  };
 
   // Handle back to object selection
   const handleBackToObjects = () => {
@@ -219,7 +154,7 @@ export default function Page() {
   };
 
   // Calculate Denda (penalty) based on MySQL function logic
-  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, objectInfo: any) => {
+  const calculateDenda = (pbbAmount: number | null, dueDate: string | null, objectInfo: ObjectInfoResponse | null | undefined) => {
     if (!pbbAmount || !dueDate) return 0;
 
     const due = new Date(dueDate);
@@ -1085,13 +1020,6 @@ export default function Page() {
                             const totalDenda = yearSummaries.reduce((sum, y) => {
                               if (y.loading || y.error) return sum;
                               return sum + (y.total_denda || 0);
-                            }, 0);
-
-                            const totalTagihan = yearSummaries.reduce((sum, y) => {
-                              if (y.loading || y.error) return sum;
-                              const denda = y.total_denda || 0;
-                              const tagihan = calculateTagihan(y.PBB_YG_HARUS_DIBAYAR_SPPT, denda);
-                              return sum + tagihan;
                             }, 0);
 
                             return (

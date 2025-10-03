@@ -10,8 +10,8 @@ class UserBase(SQLModel):
     nama: str | None = Field(default=None, max_length=255)
     telepon: str = Field(default="")
     alamat: str = Field(default="")
-    is_active: bool = False
-    is_verified: bool = False
+    is_active: bool = True  # New users are active by default
+    is_verified: bool = False  # Must verify to access pages
     is_admin: bool = False
 
 

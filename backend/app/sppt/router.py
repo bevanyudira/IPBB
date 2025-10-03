@@ -11,6 +11,7 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
 from sqlmodel import and_, func, or_, select, update, case, literal
+from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 from pydantic import BaseModel
 
@@ -83,7 +84,7 @@ router = APIRouter(tags=["op"])
 async def verifikasi(
     data: VerifikasiRequest,
     session: AsyncSession = Depends(get_async_session),
-    # current_user: User = Depends(service.get_current_user_allow_inactive),  # Temp disabled for testing
+    current_user: User = Depends(service.get_current_user_allow_inactive),
 ):
     query = (
         select(Spop, DatSubjekPajak)
@@ -112,23 +113,26 @@ async def verifikasi(
     exists = spop_and_subjek is not None
     if exists:
         spop, subjek_pajak = spop_and_subjek
+
         # Update email_wp in dat_subjek_pajak table for the found SUBJEK_PAJAK_ID
-        # await session.exec(
-        #     select(User)
-        #     .where(User.id == current_user.id)
-        #     .execution_options(synchronize_session="fetch")
-        # )
         await session.exec(
             update(DatSubjekPajak)
             .where(DatSubjekPajak.SUBJEK_PAJAK_ID == subjek_pajak.SUBJEK_PAJAK_ID)
             .values(
                 {
-                    "EMAIL_WP": "test@example.com",  # Test email for verification
+                    "EMAIL_WP": str(current_user.email),
                     "TELP_WP": data.TELP_WP,
                 }
             )
         )
-        # current_user.is_active = True
+
+        # Set user as verified after successful verification
+        await session.exec(
+            update(User)
+            .where(User.id == current_user.id)
+            .values({"is_verified": True})
+        )
+
         await session.commit()
 
     return ExistsResponse(exists=exists)
@@ -404,6 +408,116 @@ async def get_sppt_payment_detail_v2(
     )
 
 
+@router.get("/sppt/batch/{nop}/payment", response_model=List[SpptPaymentResponse])
+async def get_sppt_batch_payment(
+    nop: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """
+    Get payment information for all years of a specific NOP in one request.
+    Much faster than calling /sppt/{year}/{nop}/payment multiple times.
+    """
+    key = parse_nop(nop)
+
+    # Query to get payment data for all years grouped by year
+    query = (
+        select(
+            PembayaranSppt.KD_PROPINSI,
+            PembayaranSppt.KD_DATI2,
+            PembayaranSppt.KD_KECAMATAN,
+            PembayaranSppt.KD_KELURAHAN,
+            PembayaranSppt.KD_BLOK,
+            PembayaranSppt.NO_URUT,
+            PembayaranSppt.KD_JNS_OP,
+            PembayaranSppt.THN_PAJAK_SPPT,
+            func.sum(
+                case(
+                    (Sppt.STATUS_PEMBAYARAN_SPPT == 1, PembayaranSppt.DENDA_SPPT),
+                    else_=0
+                )
+            ).label("total_denda"),
+            func.sum(PembayaranSppt.JML_SPPT_YG_DIBAYAR).label("total_dibayar"),
+            func.group_concat(PembayaranSppt.TGL_PEMBAYARAN_SPPT.distinct()).label("tanggal_pembayaran")
+        )
+        .join(
+            Spop,
+            and_(
+                PembayaranSppt.KD_PROPINSI == Spop.KD_PROPINSI,
+                PembayaranSppt.KD_DATI2 == Spop.KD_DATI2,
+                PembayaranSppt.KD_KECAMATAN == Spop.KD_KECAMATAN,
+                PembayaranSppt.KD_KELURAHAN == Spop.KD_KELURAHAN,
+                PembayaranSppt.KD_BLOK == Spop.KD_BLOK,
+                PembayaranSppt.NO_URUT == Spop.NO_URUT,
+                PembayaranSppt.KD_JNS_OP == Spop.KD_JNS_OP,
+            ),
+        )
+        .join(
+            Sppt,
+            and_(
+                PembayaranSppt.KD_PROPINSI == Sppt.KD_PROPINSI,
+                PembayaranSppt.KD_DATI2 == Sppt.KD_DATI2,
+                PembayaranSppt.KD_KECAMATAN == Sppt.KD_KECAMATAN,
+                PembayaranSppt.KD_KELURAHAN == Sppt.KD_KELURAHAN,
+                PembayaranSppt.KD_BLOK == Sppt.KD_BLOK,
+                PembayaranSppt.NO_URUT == Sppt.NO_URUT,
+                PembayaranSppt.KD_JNS_OP == Sppt.KD_JNS_OP,
+                PembayaranSppt.THN_PAJAK_SPPT == Sppt.THN_PAJAK_SPPT,
+            ),
+        )
+        .join(
+            DatSubjekPajak,
+            Spop.SUBJEK_PAJAK_ID == DatSubjekPajak.SUBJEK_PAJAK_ID,
+        )
+        .where(
+            DatSubjekPajak.EMAIL_WP == str(current_user.email),
+            PembayaranSppt.KD_PROPINSI == key["KD_PROPINSI"],
+            PembayaranSppt.KD_DATI2 == key["KD_DATI2"],
+            PembayaranSppt.KD_KECAMATAN == key["KD_KECAMATAN"],
+            PembayaranSppt.KD_KELURAHAN == key["KD_KELURAHAN"],
+            PembayaranSppt.KD_BLOK == key["KD_BLOK"],
+            PembayaranSppt.NO_URUT == key["NO_URUT"],
+            PembayaranSppt.KD_JNS_OP == key["KD_JNS_OP"],
+        )
+        .group_by(
+            PembayaranSppt.KD_PROPINSI,
+            PembayaranSppt.KD_DATI2,
+            PembayaranSppt.KD_KECAMATAN,
+            PembayaranSppt.KD_KELURAHAN,
+            PembayaranSppt.KD_BLOK,
+            PembayaranSppt.NO_URUT,
+            PembayaranSppt.KD_JNS_OP,
+            PembayaranSppt.THN_PAJAK_SPPT,
+        )
+        .order_by(PembayaranSppt.THN_PAJAK_SPPT.desc())
+    )
+
+    async def execute_batch_payment_query():
+        result = await session.exec(query)
+        return result.all()
+
+    payment_data_list = await retry_db_operation(execute_batch_payment_query)
+
+    # Convert to response format
+    responses = []
+    for payment_data in payment_data_list:
+        responses.append(SpptPaymentResponse(
+            KD_PROPINSI=payment_data[0],
+            KD_DATI2=payment_data[1],
+            KD_KECAMATAN=payment_data[2],
+            KD_KELURAHAN=payment_data[3],
+            KD_BLOK=payment_data[4],
+            NO_URUT=payment_data[5],
+            KD_JNS_OP=payment_data[6],
+            THN_PAJAK_SPPT=payment_data[7],
+            total_denda=payment_data[8] or 0,
+            total_dibayar=payment_data[9] or 0,
+            tanggal_pembayaran=payment_data[10]
+        ))
+
+    return responses
+
+
 @router.get("/sppt/{nop}/info")
 async def get_object_info(
     nop: str,
@@ -510,7 +624,7 @@ async def get_object_info(
                 Spop.KD_KELURAHAN == RefKelurahan.KD_KELURAHAN,
             ),
         )
-        .join(
+        .outerjoin(
             Sppt,
             and_(
                 Spop.KD_PROPINSI == Sppt.KD_PROPINSI,
@@ -655,6 +769,8 @@ async def get_object_info(
     # Return actual object information
     return {
         "nomor_objek_pajak": nop,
+        "KD_PROPINSI": getattr(object_data, 'KD_PROPINSI', None),
+        "KD_DATI2": getattr(object_data, 'KD_DATI2', None),
         "nama_wajib_pajak": getattr(object_data, 'NM_WP', None),
         "telpon_wajib_pajak": getattr(object_data, 'TELP_WP', None),
         "alamat_wajib_pajak": getattr(object_data, 'JALAN_WP', None),
@@ -750,6 +866,102 @@ async def get_sppt_detail(
             detail="SPPT not found",
         )
     return sppt
+
+
+@router.get("/sppt/batch/{nop}/complete")
+async def get_sppt_with_payments_by_nop(
+    nop: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """
+    Get all SPPT data with payment information in one optimized query.
+    Returns SPPT LEFT JOIN pembayaran_sppt for a specific NOP.
+    This is much faster than making separate calls.
+    """
+    key = parse_nop(nop)
+
+    # Single query with LEFT JOIN to get SPPT and payment data together
+    query = (
+        select(
+            Sppt,
+            func.sum(
+                case(
+                    (Sppt.STATUS_PEMBAYARAN_SPPT == 1, PembayaranSppt.DENDA_SPPT),
+                    else_=0
+                )
+            ).label("total_denda"),
+            func.sum(PembayaranSppt.JML_SPPT_YG_DIBAYAR).label("total_dibayar"),
+            func.group_concat(PembayaranSppt.TGL_PEMBAYARAN_SPPT.distinct()).label("tanggal_pembayaran")
+        )
+        .join(
+            Spop,
+            and_(
+                Sppt.KD_PROPINSI == Spop.KD_PROPINSI,
+                Sppt.KD_DATI2 == Spop.KD_DATI2,
+                Sppt.KD_KECAMATAN == Spop.KD_KECAMATAN,
+                Sppt.KD_KELURAHAN == Spop.KD_KELURAHAN,
+                Sppt.KD_BLOK == Spop.KD_BLOK,
+                Sppt.NO_URUT == Spop.NO_URUT,
+                Sppt.KD_JNS_OP == Spop.KD_JNS_OP,
+            ),
+        )
+        .join(
+            DatSubjekPajak,
+            Spop.SUBJEK_PAJAK_ID == DatSubjekPajak.SUBJEK_PAJAK_ID,
+        )
+        .outerjoin(
+            PembayaranSppt,
+            and_(
+                Sppt.KD_PROPINSI == PembayaranSppt.KD_PROPINSI,
+                Sppt.KD_DATI2 == PembayaranSppt.KD_DATI2,
+                Sppt.KD_KECAMATAN == PembayaranSppt.KD_KECAMATAN,
+                Sppt.KD_KELURAHAN == PembayaranSppt.KD_KELURAHAN,
+                Sppt.KD_BLOK == PembayaranSppt.KD_BLOK,
+                Sppt.NO_URUT == PembayaranSppt.NO_URUT,
+                Sppt.KD_JNS_OP == PembayaranSppt.KD_JNS_OP,
+                Sppt.THN_PAJAK_SPPT == PembayaranSppt.THN_PAJAK_SPPT,
+            ),
+        )
+        .where(
+            DatSubjekPajak.EMAIL_WP == str(current_user.email),
+            Sppt.KD_PROPINSI == key["KD_PROPINSI"],
+            Sppt.KD_DATI2 == key["KD_DATI2"],
+            Sppt.KD_KECAMATAN == key["KD_KECAMATAN"],
+            Sppt.KD_KELURAHAN == key["KD_KELURAHAN"],
+            Sppt.KD_BLOK == key["KD_BLOK"],
+            Sppt.NO_URUT == key["NO_URUT"],
+            Sppt.KD_JNS_OP == key["KD_JNS_OP"],
+        )
+        .group_by(
+            Sppt.KD_PROPINSI,
+            Sppt.KD_DATI2,
+            Sppt.KD_KECAMATAN,
+            Sppt.KD_KELURAHAN,
+            Sppt.KD_BLOK,
+            Sppt.NO_URUT,
+            Sppt.KD_JNS_OP,
+            Sppt.THN_PAJAK_SPPT,
+        )
+        .order_by(Sppt.THN_PAJAK_SPPT.desc())
+    )
+
+    async def execute_complete_query():
+        result = await session.exec(query)
+        return result.all()
+
+    rows = await retry_db_operation(execute_complete_query)
+
+    # Format the response
+    result = []
+    for row in rows:
+        sppt_data = row[0].model_dump()
+        sppt_data['total_denda'] = row[1] or 0
+        sppt_data['total_dibayar'] = row[2] or 0
+        sppt_data['tanggal_pembayaran'] = row[3]
+        result.append(sppt_data)
+
+    return result
 
 
 @router.get("/sppt/batch/{nop}", response_model=List[SpptResponse])

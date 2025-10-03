@@ -125,6 +125,39 @@ export const opGetSpptYearsResponse = zod.object({
 })
 
 /**
+ * Get payment information for a specific SPPT. Returns grouped payment data with totals.
+ * @summary Get Sppt Payment Detail V2
+ */
+export const opGetSpptPaymentDetailV2Params = zod.object({
+  "year": zod.string(),
+  "nop": zod.string()
+})
+
+export const opGetSpptPaymentDetailV2Response = zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "THN_PAJAK_SPPT": zod.string(),
+  "total_denda": zod.number().or(zod.null()).optional(),
+  "total_dibayar": zod.number().or(zod.null()).optional(),
+  "tanggal_pembayaran": zod.string().or(zod.null()).optional()
+})
+
+/**
+ * Get comprehensive object information including taxpayer details, location, and property values.
+ * @summary Get Object Info
+ */
+export const opGetObjectInfoParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opGetObjectInfoResponse = zod.any()
+
+/**
  * Get detailed SPPT data for a specific property (object) and year. Use after selecting object and year. NOP is a single string.
  * @summary Get Sppt Detail
  */

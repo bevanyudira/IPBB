@@ -2,25 +2,18 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { useGetMyProfile } from "@/services/api/profile"
-import { Loader2, User, Mail, Phone, MapPin, Building2, CreditCard, Briefcase, ShieldCheck } from "lucide-react"
+import { Loader2, User, Mail, Phone, MapPin, Building2, CreditCard, Briefcase } from "lucide-react"
 import { useAuthMeWithRedirect } from "../hooks/use-auth-me"
 import { useSidebarUser } from "../hooks/use-sidebar-user"
-import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
   useAuthMeWithRedirect()
   const { data: profile, error, isLoading } = useGetMyProfile()
   const sidebarUser = useSidebarUser()
-  const router = useRouter()
-
-  const handleToggleAdmin = () => {
-    router.push("/profile/toggle-admin")
-  }
 
   const renderProfileField = (label: string, value: string | null | undefined, icon: React.ReactNode) => {
     if (!value) return null
@@ -51,36 +44,6 @@ export default function ProfilePage() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
-              {/* Admin Toggle Section */}
-              {profile?.user && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5" />
-                        Status Admin
-                      </div>
-                      <Button
-                        onClick={handleToggleAdmin}
-                        variant={profile.user.is_admin ? "destructive" : "default"}
-                        size="sm"
-                      >
-                        {profile.user.is_admin ? "Disable Admin" : "Enable Admin"}
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Status saat ini: <strong>{profile.user.is_admin ? "Admin" : "User Biasa"}</strong>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {profile.user.is_admin
-                        ? "Anda memiliki akses ke Dashboard dan fitur admin lainnya."
-                        : "Aktifkan status admin untuk mengakses Dashboard dan fitur admin."}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
               {isLoading && (
                 <Card>
                   <CardContent className="flex items-center justify-center p-6">

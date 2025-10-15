@@ -20,7 +20,7 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 
 def get_google_oauth_url() -> str:
-    redirect_uri = f"{settings.BACKEND_URL}/auth/oauth/google/callback"
+    redirect_uri = f"{settings.BACKEND_URL}/api/auth/oauth/google/callback"
 
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -45,7 +45,7 @@ async def handle_google_callback(request: Request, session: AsyncSession) -> Use
                 "code": code,
                 "client_id": GOOGLE_CLIENT_ID,
                 "client_secret": GOOGLE_CLIENT_SECRET,
-                "redirect_uri": f"{settings.BACKEND_URL}/auth/oauth/google/callback",
+                "redirect_uri": f"{settings.BACKEND_URL}/api/auth/oauth/google/callback",
                 "grant_type": "authorization_code",
             },
         )
@@ -54,7 +54,10 @@ async def handle_google_callback(request: Request, session: AsyncSession) -> Use
         access_token = token_data.get("access_token")
 
         if not access_token:
-            raise HTTPException(status_code=400, detail="Google auth failed")
+            # Log error dari Google untuk debugging
+            print(f"Google OAuth Error: {token_data}")
+            error_desc = token_data.get("error_description", token_data.get("error", "Unknown error"))
+            raise HTTPException(status_code=400, detail=f"Google auth failed: {error_desc}")
 
         user_resp = await client.get(
             GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"}

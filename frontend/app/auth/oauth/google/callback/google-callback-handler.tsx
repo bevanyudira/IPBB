@@ -14,7 +14,7 @@ export default function GoogleCallbackHandler() {
     console.log("Google OAuth Callback Params:", { access_token, refresh_token })
 
     if (access_token && refresh_token) {
-      localStorage.setItem("token", access_token)
+      localStorage.setItem("access_token", access_token)
       localStorage.setItem("refresh_token", refresh_token)
       document.cookie = `token=${access_token}; path=/;`
       router.replace("/profile")

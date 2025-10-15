@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     default-libmysqlclient-dev \
     pkg-config \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -27,13 +28,15 @@ RUN uv sync --frozen
 # Copy application code
 COPY . .
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' --uid 1001 appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+# Entrypoint script will wait for MySQL and run migrations
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Command to run the application
 CMD ["uv", "run", "fastapi", "dev", "--host", "0.0.0.0", "--port", "8000"]

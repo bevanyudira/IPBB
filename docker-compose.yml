@@ -1,55 +1,87 @@
 services:
-  # Traefik reverse proxy
-  traefik:
-    image: traefik:v3.0
-    container_name: traefik
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ipbb-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ipbb
+      MYSQL_USER: ipbb_user
+      MYSQL_PASSWORD: ipbb_password
     ports:
-      - "80:80"      # Frontend
-      - "8000:8000"  # Backend
-      - "8080:8080"  # Traefik dashboard
+      - "3306:3306"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - mysql_data:/var/lib/mysql
+      - ./ipbb_new.sql:/docker-entrypoint-initdb.d/ipbb_new.sql
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Backend service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: backend
+    container_name: ipbb-backend
     env_file:
       - ./backend/.env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`pbb.tabanankab.go.id`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
     networks:
       - app-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: always
 
   # Frontend service
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_BASE_URL: "https://pbb.tabanankab.go.id/api"
-    container_name: frontend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`pbb.tabanankab.go.id`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+      dockerfile: Dockerfile.dev
+    container_name: ipbb-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
     networks:
       - app-network
     depends_on:
       - backend
+    restart: always
+
+  # phpMyAdmin - Web-based MySQL Management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: ipbb-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: root_password
+      UPLOAD_LIMIT: 300M
+    networks:
+      - app-network
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
 
 networks:
   app-network:

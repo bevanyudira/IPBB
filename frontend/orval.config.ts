@@ -10,7 +10,7 @@ const defaultQueryOverride = {
 export default defineConfig({
   app: {
     input: {
-      target: `${baseURL}/api/openapi.json`,
+      target: "./openapi.json",
       filters: {
         tags: [/^(?!.*healthcheck).*$/],
       },
@@ -34,7 +34,7 @@ export default defineConfig({
   },
   zod: {
     input: {
-      target: `${baseURL}/api/openapi.json`,
+      target: "./openapi.json",
     },
     output: {
       mode: "tags-split",

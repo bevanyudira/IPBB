@@ -9,8 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useOpGetAllSpop } from "@/services/api/endpoints/op/op"
-import type { SpopResponse } from "@/services/api/models/spopResponse"
+import { useOpGetSpopList } from "@/services/api/endpoints/op/op"
 import {
   MapPin,
   Building,
@@ -26,12 +25,12 @@ export default function Page() {
   const sidebarUser = useSidebarUser()
 
   // Fetch SPOP objects
-  const { data: spopData, isLoading: spopLoading, error: spopError } = useOpGetAllSpop({})
+  const { data: spopData, isLoading: spopLoading, error: spopError } = useOpGetSpopList({})
   const objects = spopData?.data || []
 
   // Handle object selection - navigate to year selection page
-  const handleSelectObject = (spop: SpopResponse) => {
-    const nop = [
+  const handleSelectObject = (spop: any) => {
+    const nop = spop.NOP || [
       spop.KD_PROPINSI,
       spop.KD_DATI2,
       spop.KD_KECAMATAN,
@@ -94,8 +93,8 @@ export default function Page() {
                   <div className="space-y-4">
                     {objects.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {objects.map((spop: SpopResponse) => {
-                          const nopObj = [
+                        {objects.map((spop: any) => {
+                          const nopObj = spop.NOP || [
                             spop.KD_PROPINSI,
                             spop.KD_DATI2,
                             spop.KD_KECAMATAN,

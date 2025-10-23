@@ -10,10 +10,6 @@ import type {
   SWRConfiguration
 } from 'swr';
 
-import type {
-  DatSubjekPajakResponse
-} from '../../models';
-
 import { clientFetcher } from '../../../../lib/orval/mutator';
 import type { ErrorType } from '../../../../lib/orval/mutator';
 
@@ -30,7 +26,7 @@ import type { ErrorType } from '../../../../lib/orval/mutator';
 export const profileGetMyProfile = (
     
  options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<DatSubjekPajakResponse>(
+    return clientFetcher<unknown>(
     {url: `/profile/me`, method: 'GET'
     },
     options);
@@ -54,45 +50,6 @@ export const useProfileGetMyProfile = <TError = ErrorType<unknown>>(
   const isEnabled = swrOptions?.enabled !== false
   const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getProfileGetMyProfileKey() : null);
   const swrFn = () => profileGetMyProfile(requestOptions)
-
-  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
-
-  return {
-    swrKey,
-    ...query
-  }
-}
-/**
- * Toggle current user's admin status
- * @summary Toggle Admin
- */
-export const profileToggleAdmin = (
-    
- options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<unknown>(
-    {url: `/profile/toggle-admin`, method: 'GET'
-    },
-    options);
-  }
-
-
-
-export const getProfileToggleAdminKey = () => [`/profile/toggle-admin`] as const;
-
-export type ProfileToggleAdminQueryResult = NonNullable<Awaited<ReturnType<typeof profileToggleAdmin>>>
-export type ProfileToggleAdminQueryError = ErrorType<unknown>
-
-/**
- * @summary Toggle Admin
- */
-export const useProfileToggleAdmin = <TError = ErrorType<unknown>>(
-   options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof profileToggleAdmin>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
-) => {
-  const {swr: swrOptions, request: requestOptions} = options ?? {}
-
-  const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getProfileToggleAdminKey() : null);
-  const swrFn = () => profileToggleAdmin(requestOptions)
 
   const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
 

@@ -30,74 +30,95 @@ export const opVerifikasiResponse = zod.object({
 })
 
 /**
- * List all objects (SPOP) for the current user. Use this endpoint to select an object (NOP) before choosing a year.
- * @summary Get All Spop
+ * List all SPOP dengan info Nama WP dan Status Pembayaran.
+Menampilkan: NOP, Nama Wajib Pajak, Status Pembayaran
+ * @summary Get Spop List
  */
-export const opGetAllSpopQueryPageDefault = 1;export const opGetAllSpopQueryPerPageDefault = 10;
-export const opGetAllSpopQueryPerPageMax = 100;
-export const opGetAllSpopQuerySortByDefault = "KD_PROPINSI";export const opGetAllSpopQuerySortOrderDefault = "asc";
+export const opGetSpopListQueryPageDefault = 1;export const opGetSpopListQueryPerPageDefault = 10;
+export const opGetSpopListQueryPerPageMax = 100;
+export const opGetSpopListQuerySortByDefault = "NOP";export const opGetSpopListQuerySortOrderDefault = "asc";
 
-export const opGetAllSpopQueryParams = zod.object({
-  "search": zod.string().or(zod.null()).optional().describe('Search by NM_WP'),
-  "page": zod.number().min(1).default(opGetAllSpopQueryPageDefault),
-  "per_page": zod.number().min(1).max(opGetAllSpopQueryPerPageMax).default(opGetAllSpopQueryPerPageDefault),
-  "sort_by": zod.enum(['KD_PROPINSI', 'JALAN_OP', 'LUAS_BUMI']).or(zod.null()).default(opGetAllSpopQuerySortByDefault),
-  "sort_order": zod.enum(['asc', 'desc']).or(zod.null()).default(opGetAllSpopQuerySortOrderDefault)
+export const opGetSpopListQueryParams = zod.object({
+  "search": zod.string().or(zod.null()).optional().describe('Search by NM_WP or NOP'),
+  "page": zod.number().min(1).default(opGetSpopListQueryPageDefault),
+  "per_page": zod.number().min(1).max(opGetSpopListQueryPerPageMax).default(opGetSpopListQueryPerPageDefault),
+  "sort_by": zod.enum(['NOP', 'NM_WP', 'LUAS_BUMI']).or(zod.null()).default(opGetSpopListQuerySortByDefault),
+  "sort_order": zod.enum(['asc', 'desc']).or(zod.null()).default(opGetSpopListQuerySortOrderDefault)
 })
 
-export const opGetAllSpopResponse = zod.object({
+export const opGetSpopListResponse = zod.object({
   "data": zod.array(zod.object({
-  "NM_WP": zod.string().or(zod.null()).optional(),
-  "JNS_TRANSAKSI_OP": zod.string(),
-  "KD_PROPINSI_ASAL": zod.string().or(zod.null()).optional(),
-  "JALAN_OP": zod.string().or(zod.null()).optional(),
-  "JNS_BUMI": zod.string().or(zod.null()).optional(),
-  "NIP_PEMERIKSA_OP": zod.string().or(zod.null()).optional(),
-  "KD_PROPINSI_BERSAMA": zod.string().or(zod.null()).optional(),
-  "KD_DATI2_ASAL": zod.string().or(zod.null()).optional(),
-  "BLOK_KAV_NO_OP": zod.string().or(zod.null()).optional(),
-  "NILAI_SISTEM_BUMI": zod.number(),
-  "NO_PERSIL": zod.string().or(zod.null()),
-  "KD_BLOK": zod.string(),
-  "KD_DATI2_BERSAMA": zod.string().or(zod.null()).optional(),
-  "KD_KECAMATAN_ASAL": zod.string().or(zod.null()).optional(),
-  "KELURAHAN_OP": zod.string().or(zod.null()).optional(),
-  "TGL_PENDATAAN_OP": zod.string().date(),
-  "KD_DATI2": zod.string(),
-  "KD_KECAMATAN_BERSAMA": zod.string().or(zod.null()).optional(),
-  "KD_KELURAHAN_ASAL": zod.string().or(zod.null()).optional(),
-  "RW_OP": zod.string().or(zod.null()).optional(),
-  "NM_PENDATAAN_OP": zod.string().or(zod.null()).optional(),
-  "NO_URUT": zod.string(),
-  "KD_KELURAHAN_BERSAMA": zod.string().or(zod.null()).optional(),
-  "KD_BLOK_ASAL": zod.string().or(zod.null()).optional(),
-  "RT_OP": zod.string().or(zod.null()).optional(),
-  "KD_KELURAHAN": zod.string(),
-  "KD_JNS_OP": zod.string(),
-  "KD_BLOK_BERSAMA": zod.string().or(zod.null()).optional(),
-  "NO_URUT_ASAL": zod.string().or(zod.null()).optional(),
-  "KD_STATUS_WP": zod.string().or(zod.null()).optional(),
-  "NIP_PENDATA": zod.string().or(zod.null()).optional(),
+  "NOP": zod.string(),
   "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
   "KD_KECAMATAN": zod.string(),
-  "SUBJEK_PAJAK_ID": zod.string(),
-  "NO_URUT_BERSAMA": zod.string().or(zod.null()).optional(),
-  "KD_JNS_OP_ASAL": zod.string().or(zod.null()).optional(),
-  "LUAS_BUMI": zod.number(),
-  "TGL_PEMERIKSAAN_OP": zod.string().date(),
-  "NO_FORMULIR_SPOP": zod.string().or(zod.null()).optional(),
-  "KD_JNS_OP_BERSAMA": zod.string().or(zod.null()).optional(),
-  "NO_SPPT_LAMA": zod.string().or(zod.null()).optional(),
-  "KD_ZNT": zod.string().or(zod.null()).optional(),
-  "NM_PEMERIKSAAN_OP": zod.string().or(zod.null()).optional()
-})),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "NM_WP": zod.string().or(zod.null()).optional(),
+  "STATUS_PEMBAYARAN_SPPT": zod.boolean().or(zod.null()).optional(),
+  "THN_PAJAK_SPPT": zod.string().or(zod.null()).optional(),
+  "JALAN_OP": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_OP": zod.string().or(zod.null()).optional(),
+  "LUAS_BUMI": zod.number().or(zod.null()).optional()
+}).describe('Response untuk list SPOP (tampilan card di admin)')),
   "meta": zod.object({
   "page": zod.number(),
   "per_page": zod.number(),
   "total": zod.number(),
   "total_pages": zod.number()
 })
-})
+}).describe('Response pagination untuk list SPOP')
+
+/**
+ * Create SPOP baru
+ * @summary Create Spop
+ */
+export const opCreateSpopBody = zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "JNS_TRANSAKSI_OP": zod.string().or(zod.null()).optional(),
+  "NO_FORMULIR_SPOP": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_BERSAMA": zod.string().or(zod.null()).optional(),
+  "NO_URUT_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_BERSAMA": zod.string().or(zod.null()).optional(),
+  "JALAN_OP": zod.string().or(zod.null()).optional(),
+  "RW_OP": zod.string().or(zod.null()).optional(),
+  "RT_OP": zod.string().or(zod.null()).optional(),
+  "BLOK_KAV_NO_OP": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_OP": zod.string().or(zod.null()).optional(),
+  "SUBJEK_PAJAK_ID": zod.string().or(zod.null()).optional(),
+  "KD_STATUS_WP": zod.string().or(zod.null()).optional(),
+  "TGL_PENDATAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PENDATAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PENDATA": zod.string().or(zod.null()).optional(),
+  "TGL_PEMERIKSAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PEMERIKSAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PEMERIKSA_OP": zod.string().or(zod.null()).optional(),
+  "LUAS_BUMI": zod.number().or(zod.null()).optional(),
+  "KD_ZNT": zod.string().or(zod.null()).optional(),
+  "JNS_BUMI": zod.string().or(zod.null()).optional(),
+  "NILAI_SISTEM_BUMI": zod.number().or(zod.null()).optional(),
+  "NO_PERSIL": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_URUT_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_SPPT_LAMA": zod.string().or(zod.null()).optional()
+}).describe('Request untuk create/update SPOP (form lengkap)')
 
 /**
  * @summary Get Sppt
@@ -146,6 +167,30 @@ export const opGetSpptPaymentDetailV2Response = zod.object({
   "total_dibayar": zod.number().or(zod.null()).optional(),
   "tanggal_pembayaran": zod.string().or(zod.null()).optional()
 })
+
+/**
+ * Get payment information for all years of a specific NOP in one request.
+Much faster than calling /sppt/{year}/{nop}/payment multiple times.
+ * @summary Get Sppt Batch Payment
+ */
+export const opGetSpptBatchPaymentParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opGetSpptBatchPaymentResponseItem = zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "THN_PAJAK_SPPT": zod.string(),
+  "total_denda": zod.number().or(zod.null()).optional(),
+  "total_dibayar": zod.number().or(zod.null()).optional(),
+  "tanggal_pembayaran": zod.string().or(zod.null()).optional()
+})
+export const opGetSpptBatchPaymentResponse = zod.array(opGetSpptBatchPaymentResponseItem)
 
 /**
  * Get comprehensive object information including taxpayer details, location, and property values.
@@ -200,6 +245,18 @@ export const opGetSpptDetailResponse = zod.object({
 })
 
 /**
+ * Get all SPPT data with payment information in one optimized query.
+Returns SPPT LEFT JOIN pembayaran_sppt for a specific NOP.
+This is much faster than making separate calls.
+ * @summary Get Sppt With Payments By Nop
+ */
+export const opGetSpptWithPaymentsByNopParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opGetSpptWithPaymentsByNopResponse = zod.any()
+
+/**
  * Get all SPPT data for all available years for a specific NOP in one request.
 Much faster than multiple individual requests.
  * @summary Get Sppt Batch By Nop
@@ -241,4 +298,115 @@ export const opGetSpptBatchByNopResponseItem = zod.object({
   "TGL_TERBIT_SPPT": zod.string().datetime({}).or(zod.null()).optional()
 })
 export const opGetSpptBatchByNopResponse = zod.array(opGetSpptBatchByNopResponseItem)
+
+/**
+ * Get detail SPOP by NOP (18 digit) untuk edit form
+ * @summary Get Spop Detail
+ */
+export const opGetSpopDetailParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opGetSpopDetailResponse = zod.object({
+  "KD_PROPINSI": zod.string(),
+  "KD_DATI2": zod.string(),
+  "KD_KECAMATAN": zod.string(),
+  "KD_KELURAHAN": zod.string(),
+  "KD_BLOK": zod.string(),
+  "NO_URUT": zod.string(),
+  "KD_JNS_OP": zod.string(),
+  "SUBJEK_PAJAK_ID": zod.string().or(zod.null()).optional(),
+  "NO_FORMULIR_SPOP": zod.string().or(zod.null()).optional(),
+  "JNS_TRANSAKSI_OP": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_BERSAMA": zod.string().or(zod.null()).optional(),
+  "NO_URUT_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_URUT_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_SPPT_LAMA": zod.string().or(zod.null()).optional(),
+  "JALAN_OP": zod.string().or(zod.null()).optional(),
+  "BLOK_KAV_NO_OP": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_OP": zod.string().or(zod.null()).optional(),
+  "RW_OP": zod.string().or(zod.null()).optional(),
+  "RT_OP": zod.string().or(zod.null()).optional(),
+  "KD_STATUS_WP": zod.string().or(zod.null()).optional(),
+  "LUAS_BUMI": zod.number().or(zod.null()).optional(),
+  "KD_ZNT": zod.string().or(zod.null()).optional(),
+  "JNS_BUMI": zod.string().or(zod.null()).optional(),
+  "NILAI_SISTEM_BUMI": zod.number().or(zod.null()).optional(),
+  "TGL_PENDATAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PENDATAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PENDATA": zod.string().or(zod.null()).optional(),
+  "TGL_PEMERIKSAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PEMERIKSAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PEMERIKSA_OP": zod.string().or(zod.null()).optional(),
+  "NO_PERSIL": zod.string().or(zod.null()).optional(),
+  "NM_WP": zod.string().or(zod.null()).optional(),
+  "JALAN_WP": zod.string().or(zod.null()).optional(),
+  "BLOK_KAV_NO_WP": zod.string().or(zod.null()).optional(),
+  "RW_WP": zod.string().or(zod.null()).optional(),
+  "RT_WP": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_WP": zod.string().or(zod.null()).optional(),
+  "KOTA_WP": zod.string().or(zod.null()).optional(),
+  "KD_POS_WP": zod.string().or(zod.null()).optional(),
+  "NPWP": zod.string().or(zod.null()).optional()
+}).describe('Response untuk detail SPOP (untuk edit form)')
+
+/**
+ * Update SPOP by NOP (18 digit)
+Hanya update field yang dikirim (non-null)
+ * @summary Update Spop
+ */
+export const opUpdateSpopParams = zod.object({
+  "nop": zod.string()
+})
+
+export const opUpdateSpopBody = zod.object({
+  "JNS_TRANSAKSI_OP": zod.string().or(zod.null()).optional(),
+  "NO_FORMULIR_SPOP": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_BERSAMA": zod.string().or(zod.null()).optional(),
+  "NO_URUT_BERSAMA": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_BERSAMA": zod.string().or(zod.null()).optional(),
+  "JALAN_OP": zod.string().or(zod.null()).optional(),
+  "RW_OP": zod.string().or(zod.null()).optional(),
+  "RT_OP": zod.string().or(zod.null()).optional(),
+  "BLOK_KAV_NO_OP": zod.string().or(zod.null()).optional(),
+  "KELURAHAN_OP": zod.string().or(zod.null()).optional(),
+  "SUBJEK_PAJAK_ID": zod.string().or(zod.null()).optional(),
+  "KD_STATUS_WP": zod.string().or(zod.null()).optional(),
+  "TGL_PENDATAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PENDATAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PENDATA": zod.string().or(zod.null()).optional(),
+  "TGL_PEMERIKSAAN_OP": zod.string().date().or(zod.null()).optional(),
+  "NM_PEMERIKSAAN_OP": zod.string().or(zod.null()).optional(),
+  "NIP_PEMERIKSA_OP": zod.string().or(zod.null()).optional(),
+  "LUAS_BUMI": zod.number().or(zod.null()).optional(),
+  "KD_ZNT": zod.string().or(zod.null()).optional(),
+  "JNS_BUMI": zod.string().or(zod.null()).optional(),
+  "NILAI_SISTEM_BUMI": zod.number().or(zod.null()).optional(),
+  "NO_PERSIL": zod.string().or(zod.null()).optional(),
+  "KD_PROPINSI_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_DATI2_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KECAMATAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_KELURAHAN_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_BLOK_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_URUT_ASAL": zod.string().or(zod.null()).optional(),
+  "KD_JNS_OP_ASAL": zod.string().or(zod.null()).optional(),
+  "NO_SPPT_LAMA": zod.string().or(zod.null()).optional()
+}).describe('Request untuk update SPOP (sama dengan create tapi semua optional kecuali yang diubah)')
+
+export const opUpdateSpopResponse = zod.any()
 

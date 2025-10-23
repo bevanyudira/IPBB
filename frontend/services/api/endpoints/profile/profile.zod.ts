@@ -13,25 +13,5 @@ import {
  * Get current user's profile data from dat_subjek_pajak based on email
  * @summary Get My Profile
  */
-export const profileGetMyProfileResponse = zod.object({
-  "SUBJEK_PAJAK_ID": zod.string(),
-  "NM_WP": zod.string().or(zod.null()).optional(),
-  "JALAN_WP": zod.string().or(zod.null()).optional(),
-  "BLOK_KAV_NO_WP": zod.string().or(zod.null()).optional(),
-  "RW_WP": zod.string().or(zod.null()).optional(),
-  "RT_WP": zod.string().or(zod.null()).optional(),
-  "KELURAHAN_WP": zod.string().or(zod.null()).optional(),
-  "KOTA_WP": zod.string().or(zod.null()).optional(),
-  "KD_POS_WP": zod.string().or(zod.null()).optional(),
-  "TELP_WP": zod.string().or(zod.null()).optional(),
-  "NPWP": zod.string().or(zod.null()).optional(),
-  "STATUS_PEKERJAAN_WP": zod.string().or(zod.null()).optional(),
-  "EMAIL_WP": zod.string().or(zod.null()).optional()
-}).describe('Response model for dat_subjek_pajak data')
-
-/**
- * Toggle current user's admin status
- * @summary Toggle Admin
- */
-export const profileToggleAdminResponse = zod.any()
+export const profileGetMyProfileResponse = zod.any()
 

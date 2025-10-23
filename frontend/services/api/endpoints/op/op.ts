@@ -20,9 +20,11 @@ import type {
   ExistsResponse,
   HTTPValidationError,
   NopRequest,
-  ObjectInfoResponse,
-  OpGetAllSpopParams,
-  SpopPaginatedResponse,
+  OpGetSpopListParams,
+  SpopCreateRequest,
+  SpopDetailResponse,
+  SpopListPaginatedResponse,
+  SpopUpdateRequest,
   SpptPaymentResponse,
   SpptResponse,
   SpptYearsResponse,
@@ -84,13 +86,14 @@ export const useOpVerifikasi = <TError = ErrorType<HTTPValidationError>>(
   }
 }
 /**
- * List all objects (SPOP) for the current user. Use this endpoint to select an object (NOP) before choosing a year.
- * @summary Get All Spop
+ * List all SPOP dengan info Nama WP dan Status Pembayaran.
+Menampilkan: NOP, Nama Wajib Pajak, Status Pembayaran
+ * @summary Get Spop List
  */
-export const opGetAllSpop = (
-    params?: OpGetAllSpopParams,
+export const opGetSpopList = (
+    params?: OpGetSpopListParams,
  options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<SpopPaginatedResponse>(
+    return clientFetcher<SpopListPaginatedResponse>(
     {url: `/op/spop`, method: 'GET',
         params
     },
@@ -99,24 +102,70 @@ export const opGetAllSpop = (
 
 
 
-export const getOpGetAllSpopKey = (params?: OpGetAllSpopParams,) => [`/op/spop`, ...(params ? [params]: [])] as const;
+export const getOpGetSpopListKey = (params?: OpGetSpopListParams,) => [`/op/spop`, ...(params ? [params]: [])] as const;
 
-export type OpGetAllSpopQueryResult = NonNullable<Awaited<ReturnType<typeof opGetAllSpop>>>
-export type OpGetAllSpopQueryError = ErrorType<HTTPValidationError>
+export type OpGetSpopListQueryResult = NonNullable<Awaited<ReturnType<typeof opGetSpopList>>>
+export type OpGetSpopListQueryError = ErrorType<HTTPValidationError>
 
 /**
- * @summary Get All Spop
+ * @summary Get Spop List
  */
-export const useOpGetAllSpop = <TError = ErrorType<HTTPValidationError>>(
-  params?: OpGetAllSpopParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetAllSpop>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+export const useOpGetSpopList = <TError = ErrorType<HTTPValidationError>>(
+  params?: OpGetSpopListParams, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetSpopList>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
 ) => {
   const {swr: swrOptions, request: requestOptions} = options ?? {}
 
   const isEnabled = swrOptions?.enabled !== false
-  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetAllSpopKey(params) : null);
-  const swrFn = () => opGetAllSpop(params, requestOptions)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpopListKey(params) : null);
+  const swrFn = () => opGetSpopList(params, requestOptions)
 
   const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Create SPOP baru
+ * @summary Create Spop
+ */
+export const opCreateSpop = (
+    spopCreateRequest: BodyType<SpopCreateRequest>,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<unknown>(
+    {url: `/op/spop`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: spopCreateRequest
+    },
+    options);
+  }
+
+
+
+export const getOpCreateSpopMutationFetcher = ( options?: SecondParameter<typeof clientFetcher>) => {
+  return (_: Key, { arg }: { arg: SpopCreateRequest }): Promise<unknown> => {
+    return opCreateSpop(arg, options);
+  }
+}
+export const getOpCreateSpopMutationKey = () => [`/op/spop`] as const;
+
+export type OpCreateSpopMutationResult = NonNullable<Awaited<ReturnType<typeof opCreateSpop>>>
+export type OpCreateSpopMutationError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Create Spop
+ */
+export const useOpCreateSpop = <TError = ErrorType<HTTPValidationError>>(
+   options?: { swr?:SWRMutationConfiguration<Awaited<ReturnType<typeof opCreateSpop>>, TError, Key, SpopCreateRequest, Awaited<ReturnType<typeof opCreateSpop>>> & { swrKey?: string }, request?: SecondParameter<typeof clientFetcher>}
+) => {
+
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const swrKey = swrOptions?.swrKey ?? getOpCreateSpopMutationKey();
+  const swrFn = getOpCreateSpopMutationFetcher(requestOptions);
+
+  const query = useSWRMutation(swrKey, swrFn, swrOptions)
 
   return {
     swrKey,
@@ -250,13 +299,53 @@ export const useOpGetSpptPaymentDetailV2 = <TError = ErrorType<HTTPValidationErr
   }
 }
 /**
+ * Get payment information for all years of a specific NOP in one request.
+Much faster than calling /sppt/{year}/{nop}/payment multiple times.
+ * @summary Get Sppt Batch Payment
+ */
+export const opGetSpptBatchPayment = (
+    nop: string,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<SpptPaymentResponse[]>(
+    {url: `/op/sppt/batch/${nop}/payment`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getOpGetSpptBatchPaymentKey = (nop: string,) => [`/op/sppt/batch/${nop}/payment`] as const;
+
+export type OpGetSpptBatchPaymentQueryResult = NonNullable<Awaited<ReturnType<typeof opGetSpptBatchPayment>>>
+export type OpGetSpptBatchPaymentQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Sppt Batch Payment
+ */
+export const useOpGetSpptBatchPayment = <TError = ErrorType<HTTPValidationError>>(
+  nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetSpptBatchPayment>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false && !!(nop)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpptBatchPaymentKey(nop) : null);
+  const swrFn = () => opGetSpptBatchPayment(nop, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
  * Get comprehensive object information including taxpayer details, location, and property values.
  * @summary Get Object Info
  */
 export const opGetObjectInfo = (
     nop: string,
  options?: SecondParameter<typeof clientFetcher>) => {
-    return clientFetcher<ObjectInfoResponse>(
+    return clientFetcher<unknown>(
     {url: `/op/sppt/${nop}/info`, method: 'GET'
     },
     options);
@@ -331,6 +420,47 @@ export const useOpGetSpptDetail = <TError = ErrorType<HTTPValidationError>>(
   }
 }
 /**
+ * Get all SPPT data with payment information in one optimized query.
+Returns SPPT LEFT JOIN pembayaran_sppt for a specific NOP.
+This is much faster than making separate calls.
+ * @summary Get Sppt With Payments By Nop
+ */
+export const opGetSpptWithPaymentsByNop = (
+    nop: string,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<unknown>(
+    {url: `/op/sppt/batch/${nop}/complete`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getOpGetSpptWithPaymentsByNopKey = (nop: string,) => [`/op/sppt/batch/${nop}/complete`] as const;
+
+export type OpGetSpptWithPaymentsByNopQueryResult = NonNullable<Awaited<ReturnType<typeof opGetSpptWithPaymentsByNop>>>
+export type OpGetSpptWithPaymentsByNopQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Sppt With Payments By Nop
+ */
+export const useOpGetSpptWithPaymentsByNop = <TError = ErrorType<HTTPValidationError>>(
+  nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetSpptWithPaymentsByNop>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false && !!(nop)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpptWithPaymentsByNopKey(nop) : null);
+  const swrFn = () => opGetSpptWithPaymentsByNop(nop, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
  * Get all SPPT data for all available years for a specific NOP in one request.
 Much faster than multiple individual requests.
  * @summary Get Sppt Batch By Nop
@@ -364,6 +494,93 @@ export const useOpGetSpptBatchByNop = <TError = ErrorType<HTTPValidationError>>(
   const swrFn = () => opGetSpptBatchByNop(nop, requestOptions)
 
   const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Get detail SPOP by NOP (18 digit) untuk edit form
+ * @summary Get Spop Detail
+ */
+export const opGetSpopDetail = (
+    nop: string,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<SpopDetailResponse>(
+    {url: `/op/spop/${nop}`, method: 'GET'
+    },
+    options);
+  }
+
+
+
+export const getOpGetSpopDetailKey = (nop: string,) => [`/op/spop/${nop}`] as const;
+
+export type OpGetSpopDetailQueryResult = NonNullable<Awaited<ReturnType<typeof opGetSpopDetail>>>
+export type OpGetSpopDetailQueryError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Get Spop Detail
+ */
+export const useOpGetSpopDetail = <TError = ErrorType<HTTPValidationError>>(
+  nop: string, options?: { swr?:SWRConfiguration<Awaited<ReturnType<typeof opGetSpopDetail>>, TError> & { swrKey?: Key, enabled?: boolean }, request?: SecondParameter<typeof clientFetcher> }
+) => {
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const isEnabled = swrOptions?.enabled !== false && !!(nop)
+  const swrKey = swrOptions?.swrKey ?? (() => isEnabled ? getOpGetSpopDetailKey(nop) : null);
+  const swrFn = () => opGetSpopDetail(nop, requestOptions)
+
+  const query = useSwr<Awaited<ReturnType<typeof swrFn>>, TError>(swrKey, swrFn, swrOptions)
+
+  return {
+    swrKey,
+    ...query
+  }
+}
+/**
+ * Update SPOP by NOP (18 digit)
+Hanya update field yang dikirim (non-null)
+ * @summary Update Spop
+ */
+export const opUpdateSpop = (
+    nop: string,
+    spopUpdateRequest: BodyType<SpopUpdateRequest>,
+ options?: SecondParameter<typeof clientFetcher>) => {
+    return clientFetcher<unknown>(
+    {url: `/op/spop/${nop}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: spopUpdateRequest
+    },
+    options);
+  }
+
+
+
+export const getOpUpdateSpopMutationFetcher = (nop: string, options?: SecondParameter<typeof clientFetcher>) => {
+  return (_: Key, { arg }: { arg: SpopUpdateRequest }): Promise<unknown> => {
+    return opUpdateSpop(nop, arg, options);
+  }
+}
+export const getOpUpdateSpopMutationKey = (nop: string,) => [`/op/spop/${nop}`] as const;
+
+export type OpUpdateSpopMutationResult = NonNullable<Awaited<ReturnType<typeof opUpdateSpop>>>
+export type OpUpdateSpopMutationError = ErrorType<HTTPValidationError>
+
+/**
+ * @summary Update Spop
+ */
+export const useOpUpdateSpop = <TError = ErrorType<HTTPValidationError>>(
+  nop: string, options?: { swr?:SWRMutationConfiguration<Awaited<ReturnType<typeof opUpdateSpop>>, TError, Key, SpopUpdateRequest, Awaited<ReturnType<typeof opUpdateSpop>>> & { swrKey?: string }, request?: SecondParameter<typeof clientFetcher>}
+) => {
+
+  const {swr: swrOptions, request: requestOptions} = options ?? {}
+
+  const swrKey = swrOptions?.swrKey ?? getOpUpdateSpopMutationKey(nop);
+  const swrFn = getOpUpdateSpopMutationFetcher(nop, requestOptions);
+
+  const query = useSWRMutation(swrKey, swrFn, swrOptions)
 
   return {
     swrKey,

@@ -50,6 +50,11 @@ const getNavItems = (user?: UserRead) => {
       url: "/objek-pajak/sppt",
       icon: IconChartBar,
     },
+    {
+      title: "SPOP",
+      url: "/objek-pajak/spop",
+      icon: IconFileDescription,
+    },
   ]
 
   // Add dashboard for admin users but remove admin menu item

@@ -1,7 +1,9 @@
+import logging;
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Body, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from pydantic import BaseModel
 
 from app.auth import service
 from app.core.database import get_async_session
@@ -11,6 +13,11 @@ from .schemas import DatSubjekPajakResponse
 
 router = APIRouter(tags=["profile"])
 
+# Setup logger
+logger = logging.getLogger(__name__)
+
+class ToggleAdminRequest(BaseModel):
+    confirm: bool
 
 @router.get("/me")
 async def get_my_profile(
@@ -45,19 +52,39 @@ async def get_my_profile(
 # DISABLED FOR SECURITY: Users should not be able to change their own admin status
 # Admin status should only be changed by other admins via /admin/users/{id} endpoint
 #
-# @router.get("/toggle-admin")
-# async def toggle_admin(
-#     session: AsyncSession = Depends(get_async_session),
-#     current_user: User = Depends(service.get_current_user),
-# ):
-#     """Toggle current user's admin status"""
-#
-#     current_user.is_admin = not current_user.is_admin
-#     session.add(current_user)
-#     await session.commit()
-#     await session.refresh(current_user)
-#
-#     return {
-#         "message": f"Admin status {'enabled' if current_user.is_admin else 'disabled'}",
-#         "is_admin": current_user.is_admin
-#     }
+@router.post("/toggle-admin")  # ✅ Ganti ke POST method
+async def toggle_admin(
+    request_data: ToggleAdminRequest,  # ✅ Validasi input dengan Pydantic
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(service.get_current_user),
+):
+    """Toggle current user's admin status with confirmation"""
+    
+    # ✅ Validasi konfirmasi
+    if not request_data.confirm:
+        raise HTTPException(
+            status_code=400, 
+            detail="Confirmation required to toggle admin status"
+        )
+    
+    # ✅ Logging untuk audit trail
+    logger.info(
+        f"User {current_user.id} ({current_user.email}) "
+        f"toggling admin status from {current_user.is_admin} to {not current_user.is_admin}"
+    )
+    
+    # Toggle status
+    current_user.is_admin = not current_user.is_admin
+    session.add(current_user)
+    await session.commit()
+    await session.refresh(current_user)
+    
+    # ✅ Log hasil perubahan
+    logger.info(
+        f"User {current_user.id} admin status changed to: {current_user.is_admin}"
+    )
+
+    return {
+        "message": f"Admin status {'enabled' if current_user.is_admin else 'disabled'}",
+        "is_admin": current_user.is_admin
+    }

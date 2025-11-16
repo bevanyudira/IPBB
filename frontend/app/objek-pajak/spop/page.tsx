@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { IconPlus, IconSearch, IconChevronLeft, IconChevronRight, IconEdit, IconMapPin, IconAlertCircle } from "@tabler/icons-react"
-import { useOpGetSpopList } from "@/services/api/endpoints/op/op"
+import type { UserRead } from "@/services/api/models/userRead"
 
 export default function SpopPage() {
   const router = useRouter()
@@ -21,13 +21,89 @@ export default function SpopPage() {
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
-  const perPage = 10
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<any>(null)
+  const [sidebarUser, setSidebarUser] = useState<UserRead | undefined>(undefined)
+  const perPage = 20
 
-  const { data, error, isLoading } = useOpGetSpopList({
-    page,
-    per_page: perPage,
-    search: search || undefined,
-  })
+  // Fetch user data for sidebar
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token") || localStorage.getItem("access_token")
+        if (!token) return
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const userData = await response.json()
+          setSidebarUser(userData)
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err)
+      }
+    }
+
+    fetchUser()
+  }, [])
+
+  // Fetch data menggunakan API baru
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const token = localStorage.getItem("token") || localStorage.getItem("access_token")
+        if (!token) {
+          router.push("/login")
+          return
+        }
+
+        const params = new URLSearchParams({
+          page: page.toString(),
+          page_size: perPage.toString(),
+        })
+        if (search) params.append("search", search)
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/spop/list?${params}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        )
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.push("/login")
+            return
+          }
+          throw new Error("Failed to fetch data")
+        }
+        
+        const result = await response.json()
+        setData(result)
+      } catch (err: any) {
+        setError(err)
+        toast({
+          title: "Error",
+          description: "Gagal memuat data SPOP",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [page, search, toast, router])
 
   const handleSearch = () => {
     setSearch(searchInput)
@@ -40,28 +116,22 @@ export default function SpopPage() {
     }
   }
 
-  const formatNOP = (nop: string | undefined | null) => {
+  const formatNOP = (spop: any) => {
+    // Construct NOP dari field individual
+    const nop = `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
     // Format: XX.XX.XXX.XXX.XXX.XXXX.X
-    if (!nop || nop.length !== 18) return nop || "-"
+    if (!nop || nop.length < 18) return nop || "-"
     return `${nop.slice(0, 2)}.${nop.slice(2, 4)}.${nop.slice(4, 7)}.${nop.slice(7, 10)}.${nop.slice(10, 13)}.${nop.slice(13, 17)}.${nop.slice(17, 18)}`
   }
 
   const getNOP = (spop: any): string => {
-    // Jika NOP sudah ada, return
-    if (spop.NOP) return spop.NOP
-    
-    // Jika tidak, construct dari field individual
-    if (spop.KD_PROPINSI && spop.KD_DATI2 && spop.KD_KECAMATAN && 
-        spop.KD_KELURAHAN && spop.KD_BLOK && spop.NO_URUT && spop.KD_JNS_OP) {
-      return `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
-    }
-    
-    return ""
+    // Construct dari field individual
+    return `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
   }
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar user={sidebarUser} variant="inset" />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -106,7 +176,7 @@ export default function SpopPage() {
                   <IconMapPin className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{data.meta.total.toLocaleString("id-ID")}</div>
+                  <div className="text-2xl font-bold">{data.total.toLocaleString("id-ID")}</div>
                   <p className="text-xs text-muted-foreground">
                     Objek pajak terdaftar
                   </p>
@@ -151,7 +221,7 @@ export default function SpopPage() {
             <>
               {/* SPOP Cards */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.data?.map((spop) => {
+                {data.data?.map((spop: any) => {
                   const nop = getNOP(spop)
                   return (
                   <Card key={nop || Math.random()} className="hover:shadow-lg transition-shadow">
@@ -159,26 +229,17 @@ export default function SpopPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <CardTitle className="text-lg">
-                            {spop.NM_WP || "Nama tidak tersedia"}
+                            Subjek Pajak: {spop.SUBJEK_PAJAK_ID || "-"}
                           </CardTitle>
                           <CardDescription className="font-mono text-xs mt-1">
-                            {formatNOP(nop)}
+                            NOP: {formatNOP(spop)}
                           </CardDescription>
                         </div>
-                        <Badge
-                          variant={
-                            spop.STATUS_PEMBAYARAN_SPPT === true
-                              ? "default"
-                              : spop.STATUS_PEMBAYARAN_SPPT === false
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {spop.STATUS_PEMBAYARAN_SPPT === true
-                            ? "Lunas"
-                            : spop.STATUS_PEMBAYARAN_SPPT === false
-                            ? "Belum Bayar"
-                            : "Belum Ada SPPT"}
+                        <Badge variant="secondary">
+                          {spop.JNS_TRANSAKSI_OP === "1" ? "Baru" : 
+                           spop.JNS_TRANSAKSI_OP === "2" ? "Pemecahan" :
+                           spop.JNS_TRANSAKSI_OP === "3" ? "Penggabungan" :
+                           spop.JNS_TRANSAKSI_OP === "4" ? "Mutasi" : "Perubahan"}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -197,14 +258,14 @@ export default function SpopPage() {
                       )}
                       {spop.LUAS_BUMI && (
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Luas Bumi: </span>
+                          <span className="text-muted-foreground">Luas Tanah: </span>
                           <span>{spop.LUAS_BUMI.toLocaleString("id-ID")} m²</span>
                         </div>
                       )}
-                      {spop.THN_PAJAK_SPPT && (
+                      {spop.TGL_PENDATAAN_OP && (
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Tahun Pajak: </span>
-                          <span>{spop.THN_PAJAK_SPPT}</span>
+                          <span className="text-muted-foreground">Tgl Pendataan: </span>
+                          <span>{new Date(spop.TGL_PENDATAAN_OP).toLocaleDateString("id-ID")}</span>
                         </div>
                       )}
                       <div className="pt-2">
@@ -225,10 +286,10 @@ export default function SpopPage() {
               </div>
 
               {/* Pagination */}
-              {data.meta.total_pages > 1 && (
+              {data.total_pages > 1 && (
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Menampilkan {((page - 1) * perPage) + 1} - {Math.min(page * perPage, data.meta.total)} dari {data.meta.total} data
+                    Menampilkan {((page - 1) * perPage) + 1} - {Math.min(page * perPage, data.total)} dari {data.total} data
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -241,14 +302,14 @@ export default function SpopPage() {
                       Sebelumnya
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, data.meta.total_pages) }, (_, i) => {
+                      {Array.from({ length: Math.min(5, data.total_pages) }, (_, i) => {
                         let pageNum: number
-                        if (data.meta.total_pages <= 5) {
+                        if (data.total_pages <= 5) {
                           pageNum = i + 1
                         } else if (page <= 3) {
                           pageNum = i + 1
-                        } else if (page >= data.meta.total_pages - 2) {
-                          pageNum = data.meta.total_pages - 4 + i
+                        } else if (page >= data.total_pages - 2) {
+                          pageNum = data.total_pages - 4 + i
                         } else {
                           pageNum = page - 2 + i
                         }
@@ -267,8 +328,8 @@ export default function SpopPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage(p => Math.min(data.meta.total_pages, p + 1))}
-                      disabled={page === data.meta.total_pages}
+                      onClick={() => setPage(p => Math.min(data.total_pages, p + 1))}
+                      disabled={page === data.total_pages}
                     >
                       Selanjutnya
                       <IconChevronRight className="h-4 w-4" />

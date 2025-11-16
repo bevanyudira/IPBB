@@ -50,15 +50,16 @@ const getNavItems = (user?: UserRead) => {
       url: "/objek-pajak/sppt",
       icon: IconChartBar,
     },
-    {
-      title: "SPOP",
-      url: "/objek-pajak/spop",
-      icon: IconFileDescription,
-    },
   ]
 
-  // Add dashboard for admin users but remove admin menu item
-  // Admin functionality still accessible via direct URL (/admin)
+  // Add SPOP only for admin users
+  const spopNavItem = {
+    title: "SPOP",
+    url: "/objek-pajak/spop",
+    icon: IconFileDescription,
+  }
+
+  // Add dashboard and SPOP for admin users
   if (user?.is_admin) {
     return [
       {
@@ -67,9 +68,11 @@ const getNavItems = (user?: UserRead) => {
         icon: IconDashboard,
       },
       ...baseNavItems,
+      spopNavItem, // SPOP hanya untuk admin
     ]
   }
 
+  // Non-admin users: hanya Profile dan SPPT
   return baseNavItems
 }
 

@@ -5,6 +5,7 @@ from app.core.utils import simple_generate_unique_route_id
 
 from app.auth.router import router as auth_router
 from app.sppt.router import router as sppt_router
+from app.spop.router import router as spop_router
 from app.routes.profile import router as profile_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.admin import router as admin_router
@@ -28,6 +29,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/auth")
 app.include_router(sppt_router, prefix="/op")
+app.include_router(spop_router)  # SPOP router sudah punya prefix
 app.include_router(profile_router, prefix="/profile")
 app.include_router(dashboard_router)  # Dashboard router already has prefix
 app.include_router(admin_router)  # Admin router already has prefix

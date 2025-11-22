@@ -12,6 +12,7 @@ import {
   IconHelp,
   IconInnerShadowTop,
   IconListDetails,
+  IconMap,
   IconReport,
   IconSearch,
   IconSettings,
@@ -39,6 +40,28 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 const getNavItems = (user?: UserRead) => {
+  // Dashboard, SPOP, dan Peta hanya untuk admin
+  const adminOnlyItems = user?.is_admin ? [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: IconDashboard,
+    },
+  ] : [];
+
+  const spopNavItem = user?.is_admin ? [{
+    title: "SPOP",
+    url: "/objek-pajak/spop",
+    icon: IconFileDescription,
+  }] : [];
+
+  const petaNavItem = user?.is_admin ? [{
+    title: "Peta",
+    url: "/peta",
+    icon: IconMap,
+  }] : [];
+
+  // Menu dasar untuk semua user
   const baseNavItems = [
     {
       title: "Profil",
@@ -50,30 +73,15 @@ const getNavItems = (user?: UserRead) => {
       url: "/objek-pajak/sppt",
       icon: IconChartBar,
     },
-  ]
+  ];
 
-  // Add SPOP only for admin users
-  const spopNavItem = {
-    title: "SPOP",
-    url: "/objek-pajak/spop",
-    icon: IconFileDescription,
-  }
-
-  // Add dashboard and SPOP for admin users
-  if (user?.is_admin) {
-    return [
-      {
-        title: "Dashboard",
-        url: "/dashboard",
-        icon: IconDashboard,
-      },
-      ...baseNavItems,
-      spopNavItem, // SPOP hanya untuk admin
-    ]
-  }
-
-  // Non-admin users: hanya Profile dan SPPT
-  return baseNavItems
+  // Gabungkan semua menu
+  return [
+    ...adminOnlyItems,
+    ...baseNavItems,
+    ...petaNavItem,
+    ...spopNavItem,
+  ];
 }
 
 const data = {

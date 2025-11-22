@@ -25,16 +25,18 @@ export default function SpopPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<any>(null)
   const [sidebarUser, setSidebarUser] = useState<UserRead | undefined>(undefined)
+  const [isMounted, setIsMounted] = useState(false)
   const perPage = 20
 
   // Fetch user data for sidebar
   useEffect(() => {
+    setIsMounted(true)
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token") || localStorage.getItem("access_token")
         if (!token) return
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
           headers: {
             "Authorization": `Bearer ${token}`,
           },
@@ -127,6 +129,11 @@ export default function SpopPage() {
   const getNOP = (spop: any): string => {
     // Construct dari field individual
     return `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
+  }
+
+  // Prevent sidebar flash during initial load
+  if (!isMounted) {
+    return null
   }
 
   return (

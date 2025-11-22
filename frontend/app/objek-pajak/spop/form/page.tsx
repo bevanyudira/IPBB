@@ -28,7 +28,7 @@ export default function SpopFormPage() {
         const token = localStorage.getItem("token") || localStorage.getItem("access_token")
         if (!token) return
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
           headers: {
             "Authorization": `Bearer ${token}`,
           },

@@ -1,6 +1,10 @@
+// components/nav-main.tsx - VERSI SIMPLE & CLEAN
 "use client"
 
-import { type Icon } from "@tabler/icons-react"
+import { usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
+import type { Icon } from "@tabler/icons-react"
+import { cn } from "@/lib/utils"
 
 import {
   SidebarGroup,
@@ -9,7 +13,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
 
 export function NavMain({
   items,
@@ -21,38 +24,42 @@ export function NavMain({
   }[]
 }) {
   const router = useRouter()
+  const pathname = usePathname()
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-2">
-        {/* <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
-            >
-              <IconCirclePlusFilled />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <IconMail />
-              <span className="sr-only">Inbox</span>
-            </Button>
-          </SidebarMenuItem>
-        </SidebarMenu> */}
+      <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} onClick={() => router.push(item.url)}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            // Cek apakah halaman aktif
+            const isActive = pathname === item.url || 
+                            pathname.startsWith(item.url + "/")
+            
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  tooltip={item.title} 
+                  onClick={() => router.push(item.url)}
+                  isActive={isActive}
+                  className={cn(
+                    // Base styling untuk semua button
+                    "transition-all duration-200",
+                    
+                    // Styling untuk state normal
+                    "hover:bg-gray-300 hover:text-gray-900",
+                    "dark:hover:bg-gray-800 dark:hover:text-gray-100",
+                    
+                    // Styling untuk state aktif - menggunakan !important untuk override data-[active=true]
+                    isActive && "!bg-blue-500 !text-white !font-semibold",
+                    isActive && "hover:!bg-blue-600 hover:!text-white",
+                  )}
+                >
+                  {item.icon && <item.icon className="size-4" />}
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

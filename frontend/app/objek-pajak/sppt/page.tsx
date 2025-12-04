@@ -13,7 +13,7 @@ import { useOpGetSpopList } from "@/services/api/endpoints/op/op"
 import {
   MapPin,
   Building,
-  FileText,
+  // FileText,
   User,
   AlertCircle,
   ArrowRight
@@ -186,8 +186,8 @@ export default function Page() {
               </CardContent>
             </Card>
 
-            {/* Information Panel */}
-            <PbbInformationPanel />
+            {/* Information Panel (only for non-admin users) */}
+            {!sidebarUser?.is_admin && <PbbInformationPanel />}
           </div>
         </div>
       </SidebarInset>

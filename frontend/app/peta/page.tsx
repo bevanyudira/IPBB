@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -18,7 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, X, ShieldAlert } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import type { UserRead } from "@/services/api/models/userRead";
 
 // Dynamic import untuk Leaflet (tidak support SSR)
@@ -140,10 +140,16 @@ export default function PetaPage() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar user={sidebarUser} />
+    <SidebarProvider
+      style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }>
+      <AppSidebar user={sidebarUser} variant="inset"/>
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="Pemetaan (GIS)"/>
         <div className="flex flex-1 flex-col gap-4 p-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Peta Objek Pajak</h1>

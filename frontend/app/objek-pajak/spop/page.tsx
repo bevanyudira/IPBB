@@ -1,19 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { IconPlus, IconSearch, IconChevronLeft, IconChevronRight, IconEdit, IconMapPin, IconAlertCircle } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconMapPin, IconRefresh } from "@tabler/icons-react"
 import type { UserRead } from "@/services/api/models/userRead"
+import type { SpopListResponse, SpopListItem } from "@/types/spop-api"
+
+// Custom hooks/components yang bisa di-extract nanti
+import { useDebounce } from "@/hooks/use-debounce"
+import { Pagination } from "@/app/objek-pajak/spop/components/pagination"
+import { SpopCard } from "@/app/objek-pajak/spop/components/spop-card"
 
 export default function SpopPage() {
   const router = useRouter()
@@ -21,16 +25,19 @@ export default function SpopPage() {
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<SpopListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [sidebarUser, setSidebarUser] = useState<UserRead | undefined>(undefined)
-  const [isMounted, setIsMounted] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   const perPage = 20
+  const debouncedSearch = useDebounce(searchInput, 300)
 
   // Fetch user data for sidebar
   useEffect(() => {
-    setIsMounted(true)
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token") || localStorage.getItem("access_token")
@@ -54,114 +61,205 @@ export default function SpopPage() {
     fetchUser()
   }, [])
 
-  // Fetch data menggunakan API baru
+  // Effect untuk debounced search
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const token = localStorage.getItem("token") || localStorage.getItem("access_token")
-        if (!token) {
+    setSearch(debouncedSearch)
+    setPage(1)
+  }, [debouncedSearch])
+
+  // Fetch data menggunakan API
+  const fetchData = useCallback(async (pageNum: number, searchTerm: string) => {
+    // Cancel previous request jika masih pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const token = localStorage.getItem("token") || localStorage.getItem("access_token")
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        page_size: perPage.toString(),
+      })
+      if (searchTerm.trim()) {
+        params.append("search", searchTerm.trim())
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/spop/list?${params}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          signal: abortController.signal,
+        }
+      )
+      
+      if (!response.ok) {
+        if (response.status === 401) {
           router.push("/login")
           return
         }
-
-        const params = new URLSearchParams({
-          page: page.toString(),
-          page_size: perPage.toString(),
-        })
-        if (search) params.append("search", search)
-
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/spop/list?${params}`,
-          {
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        )
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            router.push("/login")
-            return
-          }
-          throw new Error("Failed to fetch data")
-        }
-        
-        const result = await response.json()
-        setData(result)
-      } catch (err: any) {
-        setError(err)
+        throw new Error(`Failed to fetch data: ${response.status}`)
+      }
+      
+      const result: SpopListResponse = await response.json()
+      setData(result)
+    } catch (err: any) {
+      // AbortError tidak perlu ditampilkan sebagai error
+      if (err.name !== 'AbortError') {
+        setError(err.message || "Gagal memuat data SPOP")
         toast({
           title: "Error",
-          description: "Gagal memuat data SPOP",
+          description: err.message || "Gagal memuat data SPOP",
           variant: "destructive",
         })
-      } finally {
-        setIsLoading(false)
+      }
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }, [router, toast])
+
+  // Effect untuk fetch data
+  useEffect(() => {
+    fetchData(page, search)
+    
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
       }
     }
+  }, [page, search, fetchData])
 
-    fetchData()
-  }, [page, search, toast, router])
-
-  const handleSearch = () => {
+  // Handlers
+  const handleSearch = useCallback(() => {
     setSearch(searchInput)
     setPage(1)
-  }
+  }, [searchInput])
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch()
     }
-  }
+  }, [handleSearch])
 
-  const formatNOP = (spop: any) => {
-    // Construct NOP dari field individual
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true)
+    fetchData(page, search)
+  }, [fetchData, page, search])
+
+  const handleAddNew = useCallback(() => {
+    router.push("/objek-pajak/spop/form")
+  }, [router])
+
+  const handleViewDetail = useCallback((nop: string) => {
+    router.push(`/objek-pajak/spop/form?nop=${nop}`)
+  }, [router])
+
+  // Format NOP helper
+  const formatNOP = (spop: SpopListItem): string => {
+    if (!spop.KD_PROPINSI || !spop.KD_DATI2 || !spop.KD_KECAMATAN || 
+        !spop.KD_KELURAHAN || !spop.KD_BLOK || !spop.NO_URUT || !spop.KD_JNS_OP) {
+      return "-"
+    }
+    
     const nop = `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
-    // Format: XX.XX.XXX.XXX.XXX.XXXX.X
-    if (!nop || nop.length < 18) return nop || "-"
+    
+    if (nop.length !== 18) return nop
+    
     return `${nop.slice(0, 2)}.${nop.slice(2, 4)}.${nop.slice(4, 7)}.${nop.slice(7, 10)}.${nop.slice(10, 13)}.${nop.slice(13, 17)}.${nop.slice(17, 18)}`
   }
 
-  const getNOP = (spop: any): string => {
-    // Construct dari field individual
-    return `${spop.KD_PROPINSI}${spop.KD_DATI2}${spop.KD_KECAMATAN}${spop.KD_KELURAHAN}${spop.KD_BLOK}${spop.NO_URUT}${spop.KD_JNS_OP}`
+  const getNOP = (spop: SpopListItem): string => {
+    return `${spop.KD_PROPINSI || ''}${spop.KD_DATI2 || ''}${spop.KD_KECAMATAN || ''}${spop.KD_KELURAHAN || ''}${spop.KD_BLOK || ''}${spop.NO_URUT || ''}${spop.KD_JNS_OP || ''}`
   }
 
-  // Prevent sidebar flash during initial load
-  if (!isMounted) {
-    return null
+  const getTransactionType = (typeCode: string): string => {
+    const types: Record<string, string> = {
+      "1": "Baru",
+      "2": "Pemecahan",
+      "3": "Penggabungan",
+      "4": "Mutasi",
+      "5": "Perubahan"
+    }
+    return types[typeCode] || "Tidak Diketahui"
   }
+
+  // Loading skeletons
+  const renderSkeletons = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {[...Array(perPage)].map((_, i) => (
+        <Card key={i} className="animate-pulse">
+          <CardHeader>
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="h-3 bg-muted rounded w-1/2 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-3 bg-muted rounded w-full mb-2" />
+            <div className="h-3 bg-muted rounded w-2/3" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+
+  // Empty state
+  const renderEmptyState = () => (
+    <Card>
+      <CardContent className="pt-6 text-center">
+        <p className="text-muted-foreground mb-4">
+          {search ? "Tidak ada data yang sesuai dengan pencarian." : "Belum ada data SPOP."}
+        </p>
+        {search && (
+          <Button variant="outline" onClick={() => setSearch("")}>
+            Reset Pencarian
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+
+  // Error state
+  const renderErrorState = () => (
+    <Card>
+      <CardContent className="pt-6 text-center">
+        <p className="text-destructive mb-4">{error}</p>
+        <Button onClick={handleRefresh} variant="outline">
+          <IconRefresh className="h-4 w-4 mr-2" />
+          Coba Lagi
+        </Button>
+      </CardContent>
+    </Card>
+  )
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+    style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }>
       <AppSidebar user={sidebarUser} variant="inset" />
       <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">SPOP</h1>
-              <p className="text-muted-foreground">
-                Surat Pemberitahuan Objek Pajak - Data Objek Pajak
-              </p>
-            </div>
-            <Button
-              onClick={() => router.push("/objek-pajak/spop/form")}
-              className="gap-2"
-            >
-              <IconPlus className="h-4 w-4" />
-              Tambah SPOP
-            </Button>
-          </div>
-
+        <SiteHeader title="SPOP - Surat Pemberitahuan Objek Pajak"/>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
           {/* Search */}
           <div className="flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative flex-1 max-w-md">
               <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari berdasarkan NOP atau Nama Wajib Pajak..."
@@ -169,9 +267,22 @@ export default function SpopPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyPress}
+                aria-label="Cari data SPOP"
               />
             </div>
-            <Button onClick={handleSearch}>Cari</Button>
+            <Button onClick={handleSearch} disabled={isLoading}>
+              Cari
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleAddNew}
+                className="gap-2"
+                aria-label="Tambah SPOP baru"
+              >
+                <IconPlus className="h-4 w-4" />
+                Tambah SPOP
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -193,156 +304,40 @@ export default function SpopPage() {
           )}
 
           {/* Content */}
-          {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader>
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                    <div className="h-3 bg-muted rounded w-1/2 mt-2" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-3 bg-muted rounded w-full mb-2" />
-                    <div className="h-3 bg-muted rounded w-2/3" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          {isLoading && !data ? (
+            renderSkeletons()
           ) : error ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">
-                  Error loading data. Please try again.
-                </p>
-              </CardContent>
-            </Card>
+            renderErrorState()
           ) : !data || !data.data || data.data.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">
-                  {search ? "Tidak ada data yang sesuai dengan pencarian." : "Belum ada data SPOP."}
-                </p>
-              </CardContent>
-            </Card>
+            renderEmptyState()
           ) : (
             <>
               {/* SPOP Cards */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.data?.map((spop: any) => {
+                {data.data.map((spop) => {
                   const nop = getNOP(spop)
                   return (
-                  <Card key={nop || Math.random()} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">
-                            Subjek Pajak: {spop.SUBJEK_PAJAK_ID || "-"}
-                          </CardTitle>
-                          <CardDescription className="font-mono text-xs mt-1">
-                            NOP: {formatNOP(spop)}
-                          </CardDescription>
-                        </div>
-                        <Badge variant="secondary">
-                          {spop.JNS_TRANSAKSI_OP === "1" ? "Baru" : 
-                           spop.JNS_TRANSAKSI_OP === "2" ? "Pemecahan" :
-                           spop.JNS_TRANSAKSI_OP === "3" ? "Penggabungan" :
-                           spop.JNS_TRANSAKSI_OP === "4" ? "Mutasi" : "Perubahan"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {spop.JALAN_OP && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Alamat: </span>
-                          <span>{spop.JALAN_OP}</span>
-                        </div>
-                      )}
-                      {spop.KELURAHAN_OP && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Kelurahan: </span>
-                          <span>{spop.KELURAHAN_OP}</span>
-                        </div>
-                      )}
-                      {spop.LUAS_BUMI && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Luas Tanah: </span>
-                          <span>{spop.LUAS_BUMI.toLocaleString("id-ID")} m²</span>
-                        </div>
-                      )}
-                      {spop.TGL_PENDATAAN_OP && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Tgl Pendataan: </span>
-                          <span>{new Date(spop.TGL_PENDATAAN_OP).toLocaleDateString("id-ID")}</span>
-                        </div>
-                      )}
-                      <div className="pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-2"
-                          onClick={() => router.push(`/objek-pajak/spop/form?nop=${nop}`)}
-                        >
-                          <IconEdit className="h-4 w-4" />
-                          Lihat Detail
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <SpopCard
+                      key={nop}
+                      spop={spop}
+                      nop={nop}
+                      formattedNOP={formatNOP(spop)}
+                      transactionType={getTransactionType(spop.JNS_TRANSAKSI_OP)}
+                      onViewDetail={() => handleViewDetail(nop)}
+                    />
                   )
                 })}
               </div>
 
               {/* Pagination */}
               {data.total_pages > 1 && (
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Menampilkan {((page - 1) * perPage) + 1} - {Math.min(page * perPage, data.total)} dari {data.total} data
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      <IconChevronLeft className="h-4 w-4" />
-                      Sebelumnya
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, data.total_pages) }, (_, i) => {
-                        let pageNum: number
-                        if (data.total_pages <= 5) {
-                          pageNum = i + 1
-                        } else if (page <= 3) {
-                          pageNum = i + 1
-                        } else if (page >= data.total_pages - 2) {
-                          pageNum = data.total_pages - 4 + i
-                        } else {
-                          pageNum = page - 2 + i
-                        }
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={page === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPage(pageNum)}
-                          >
-                            {pageNum}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(data.total_pages, p + 1))}
-                      disabled={page === data.total_pages}
-                    >
-                      Selanjutnya
-                      <IconChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <Pagination
+                  currentPage={page}
+                  totalPages={data.total_pages}
+                  totalItems={data.total}
+                  perPage={perPage}
+                  onPageChange={setPage}
+                />
               )}
             </>
           )}

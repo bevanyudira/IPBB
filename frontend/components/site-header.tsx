@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+// import { useEffect } from "react"
 import { ModeToggle } from "./mode-toggle"
 
 type SiteHeaderProps = {

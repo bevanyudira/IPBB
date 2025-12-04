@@ -24,7 +24,7 @@ export default function ToggleAdminPage() {
         }
 
         // ✅ Gunakan URL yang benar dengan http://
-        const response = await fetch("/api/profile/toggle-admin", {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/profile/toggle-admin`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,

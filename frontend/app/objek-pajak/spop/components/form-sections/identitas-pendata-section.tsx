@@ -90,7 +90,7 @@ export function IdentitasPendataSection({ form }: IdentitasPendataSectionProps) 
             name="TGL_PEMERIKSAAN_OP"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal</FormLabel>
+                <FormLabel>Tanggal *</FormLabel>
                 <FormControl>
                   <Input
                     type="date"

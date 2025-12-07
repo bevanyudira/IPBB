@@ -1,33 +1,50 @@
-"use client"
+"use client";
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
-import { useGetMyProfile } from "@/services/api/profile"
-import { Loader2, User, Mail, Phone, MapPin, Building2, CreditCard, Briefcase } from "lucide-react"
-import { useAuthMeWithRedirect } from "../hooks/use-auth-me"
-import { useSidebarUser } from "../hooks/use-sidebar-user"
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { useGetMyProfile } from "@/services/api/profile";
+import {
+  Loader2,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Building2,
+  CreditCard,
+  Briefcase,
+} from "lucide-react";
+import { useAuthMeWithRedirect } from "../hooks/use-auth-me";
+import { useSidebarUser } from "../hooks/use-sidebar-user";
 
 export default function ProfilePage() {
-  useAuthMeWithRedirect()
-  const { data: profile, error, isLoading } = useGetMyProfile()
-  const sidebarUser = useSidebarUser()
+  useAuthMeWithRedirect();
+  const { data: profile, error, isLoading } = useGetMyProfile();
+  const sidebarUser = useSidebarUser();
 
-  const renderProfileField = (label: string, value: string | null | undefined, icon: React.ReactNode) => {
-    if (!value) return null
+  const renderProfileField = (
+    label: string,
+    value: string | null | undefined,
+    icon: React.ReactNode
+  ) => {
+    if (!value) return null;
 
     return (
       <div className="flex items-start gap-3 p-4 bg-primary/10 border-primary/40 border-1 rounded-lg">
         <div className="text-gray-500 dark:text-gray-400 mt-1">{icon}</div>
         <div className="flex-1">
-          <dt className="text-sm font-medium text-gray-600 dark:text-gray-300">{label}</dt>
-          <dd className="text-sm text-gray-900 dark:text-gray-100 mt-1">{value}</dd>
+          <dt className="text-sm font-medium text-gray-600 dark:text-gray-300">
+            {label}
+          </dt>
+          <dd className="text-sm text-gray-900 dark:text-gray-100 mt-1 break-words break-all whitespace-normal">
+            {value}
+          </dd>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <SidebarProvider
@@ -48,7 +65,9 @@ export default function ProfilePage() {
                 <Card>
                   <CardContent className="flex items-center justify-center p-6">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="ml-2 dark:text-gray-300">Memuat data profil...</span>
+                    <span className="ml-2 dark:text-gray-300">
+                      Memuat data profil...
+                    </span>
                   </CardContent>
                 </Card>
               )}
@@ -72,12 +91,36 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                       <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderProfileField("ID Subjek Pajak", profile.taxpayer.SUBJEK_PAJAK_ID, <CreditCard className="h-4 w-4" />)}
-                        {renderProfileField("Nama Wajib Pajak", profile.taxpayer.NM_WP, <User className="h-4 w-4" />)}
-                        {renderProfileField("NPWP", profile.taxpayer.NPWP, <CreditCard className="h-4 w-4" />)}
-                        {renderProfileField("Email", profile.taxpayer.EMAIL_WP, <Mail className="h-4 w-4" />)}
-                        {renderProfileField("Telepon", profile.taxpayer.TELP_WP, <Phone className="h-4 w-4" />)}
-                        {renderProfileField("Status Pekerjaan", profile.taxpayer.STATUS_PEKERJAAN_WP, <Briefcase className="h-4 w-4" />)}
+                        {renderProfileField(
+                          "ID Subjek Pajak",
+                          profile.taxpayer.SUBJEK_PAJAK_ID,
+                          <CreditCard className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Nama Wajib Pajak",
+                          profile.taxpayer.NM_WP,
+                          <User className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "NPWP",
+                          profile.taxpayer.NPWP,
+                          <CreditCard className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Email",
+                          profile.taxpayer.EMAIL_WP,
+                          <Mail className="h-4 w-4 text-wrap" />
+                        )}
+                        {renderProfileField(
+                          "Telepon",
+                          profile.taxpayer.TELP_WP,
+                          <Phone className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Status Pekerjaan",
+                          profile.taxpayer.STATUS_PEKERJAAN_WP,
+                          <Briefcase className="h-4 w-4" />
+                        )}
                       </dl>
                     </CardContent>
                   </Card>
@@ -91,13 +134,41 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                       <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderProfileField("Jalan", profile.taxpayer.JALAN_WP, <MapPin className="h-4 w-4" />)}
-                        {renderProfileField("Blok/Kavling/No", profile.taxpayer.BLOK_KAV_NO_WP, <Building2 className="h-4 w-4" />)}
-                        {renderProfileField("RT", profile.taxpayer.RT_WP, <Building2 className="h-4 w-4" />)}
-                        {renderProfileField("RW", profile.taxpayer.RW_WP, <Building2 className="h-4 w-4" />)}
-                        {renderProfileField("Kelurahan", profile.taxpayer.KELURAHAN_WP, <MapPin className="h-4 w-4" />)}
-                        {renderProfileField("Kota", profile.taxpayer.KOTA_WP, <MapPin className="h-4 w-4" />)}
-                        {renderProfileField("Kode Pos", profile.taxpayer.KD_POS_WP, <MapPin className="h-4 w-4" />)}
+                        {renderProfileField(
+                          "Jalan",
+                          profile.taxpayer.JALAN_WP,
+                          <MapPin className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Blok/Kavling/No",
+                          profile.taxpayer.BLOK_KAV_NO_WP,
+                          <Building2 className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "RT",
+                          profile.taxpayer.RT_WP,
+                          <Building2 className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "RW",
+                          profile.taxpayer.RW_WP,
+                          <Building2 className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Kelurahan",
+                          profile.taxpayer.KELURAHAN_WP,
+                          <MapPin className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Kota",
+                          profile.taxpayer.KOTA_WP,
+                          <MapPin className="h-4 w-4" />
+                        )}
+                        {renderProfileField(
+                          "Kode Pos",
+                          profile.taxpayer.KD_POS_WP,
+                          <MapPin className="h-4 w-4" />
+                        )}
                       </dl>
                     </CardContent>
                   </Card>
@@ -116,5 +187,5 @@ export default function ProfilePage() {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
